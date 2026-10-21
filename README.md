@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Windows, Linux ve macOS için taşınabilir (portable), yerel çalışan yapay zeka stüdyosu: Stable Diffusion (Görsel Üretimi), LLM'ler (Yapay Zeka Sohbeti), Whisper / Duyu (Sesten Metne), Türkçe TTS (Antalia, Ahenk, EMA, Supertonic, OmniVoice), Müzik / Ses Efekti (MusicGen, AudioLDM) ve Video (AnimateDiff, Wan 2.1, SVD). NVIDIA/AMD/Intel GPU ve Apple Silicon hızlandırmasıyla çalışır.</strong>
+  <strong>Windows, Linux ve macOS için taşınabilir (portable), yerel çalışan yapay zeka stüdyosu: Stable Diffusion (Görsel Üretimi), LLM'ler (Yapay Zeka Sohbeti), Whisper / Duyu / Seda (Sesten Metne), Türkçe TTS (Antalia, Ahenk, EMA, Supertonic, OmniVoice), Müzik / Ses Efekti (Stable Audio 3, MusicGen, AudioLDM) ve Video (AnimateDiff, Wan 2.1, SVD). NVIDIA/AMD/Intel GPU ve Apple Silicon hızlandırmasıyla çalışır.</strong>
 </p>
 
 <p align="center">
@@ -47,9 +47,9 @@ Aşağıdaki yerel yapay zeka kabiliyetlerini tek bir kullanıcı dostu arayüzd
 
 1. 🎨 **Görsel Üretimi (Stable Diffusion):** SD 1.5 ve SDXL `.safetensors` / `.ckpt` modelleriyle metinden görsel ve görselden görsel (img2img) üretimi.
 2. 💬 **Metin Sohbeti (LLM'ler):** `llama.cpp` altyapısıyla GGUF formatındaki açık dil modelleriyle gizli sohbet (isteğe bağlı web araması ve bulut modelleri dahil).
-3. 🎙️ **Sesten Metne (Whisper / Duyu):** `whisper.cpp` ve Türkçe için optimize Duyu-small ile ses/video dosyalarını ve mikrofon kaydını yazıya dökme; Harfiyen Türkçe noktalama, SRT/VTT altyazı ve karaokeli altyazılı video dışa aktarma.
+3. 🎙️ **Sesten Metne (Whisper / Duyu / Seda):** `whisper.cpp`, Türkçe için optimize Duyu-small ve noktalamayı kendisi yapan Seda-v0.2 ile ses/video dosyalarını ve mikrofon kaydını yazıya dökme; Harfiyen Türkçe noktalama, SRT/VTT altyazı ve karaokeli altyazılı video dışa aktarma.
 4. 🔊 **Metinden Sese (Türkçe TTS):** Antalia-2 Mini (erkek), Ahenk Cep (kadın, 7 üslup), EMA Lightning, Supertonic-3 (10 ses) ve OmniVoice (sıfır-örnek ses klonlama). Kokoro yalnızca İngilizce seslere sahiptir.
-5. 🎵 **Müzik ve Ses Efekti:** MusicGen (Small / Medium / Large) ile müzik, AudioLDM / AudioLDM 2 ile ses efekti.
+5. 🎵 **Müzik ve Ses Efekti:** Stable Audio 3 (Small Music / Medium, 44.1 kHz stereo) ve MusicGen (Small / Medium / Large) ile müzik; Stable Audio 3 Small SFX ve AudioLDM / AudioLDM 2 ile ses efekti.
 6. 🎬 **Video:** AnimateDiff ve Wan 2.1 T2V 1.3B ile metinden video, Stable Video Diffusion XT 1.1 ile görselden video.
 
 ---
@@ -57,7 +57,7 @@ Aşağıdaki yerel yapay zeka kabiliyetlerini tek bir kullanıcı dostu arayüzd
 ## <a id="ozellikler"></a> ✨ Öne Çıkan Özellikler
 
 * 🔒 **Yerel ve Gizli:** Yerel modellerle yapılan tüm çıkarımlar (inference) kendi donanımınızda gerçekleşir. Bulut modelleri (OpenRouter, OpenAI, Gemini, Anthropic, ElevenLabs, MiniMax) yalnızca siz API anahtarı girip seçtiğinizde kullanılır; bu isteklerde içerik ilgili servise gönderilir ve ücretlendirilebilir.
-* 📦 **Taşınabilir Kurulum (Windows):** Node.js, görsel / metin / ses tanıma motorları ve Türkçe TTS, Duyu, müzik ve video için gereken özel Python ortamı (Python 3.12 + PyTorch + paketler) ilk çalıştırmada proje klasörüne (`app/tools/`) kurulur; sisteminize global olarak hiçbir şey yüklenmez. NVIDIA kartlarda sürücüye uygun CUDA'lı PyTorch, diğer sistemlerde CPU sürümü seçilir.
+* 📦 **Taşınabilir Kurulum (Windows):** Node.js, görsel / metin / ses tanıma motorları ve Türkçe TTS, Duyu / Seda, müzik ve video için gereken özel Python ortamı (Python 3.12 + PyTorch + paketler) ilk çalıştırmada proje klasörüne (`app/tools/`) kurulur; sisteminize global olarak hiçbir şey yüklenmez. NVIDIA kartlarda sürücüye uygun CUDA'lı PyTorch, diğer sistemlerde CPU sürümü seçilir.
 * ⚡ **Otomatik Donanım Hızlandırma:** Sistem özelliklerinizi otomatik algılayarak NVIDIA (CUDA), AMD (ROCm / Vulkan), Intel (Vulkan / OpenVINO NPU) veya Apple Silicon (Metal) hızlandırmasını devreye alır.
 * 📥 **Entegre Model Yöneticisi:** Hugging Face üzerindeki açık modelleri tek tıkla doğrudan uygulama içinden indirin ve yönetin.
 * 📊 **Canlı Performans Monitörü:** CPU, RAM, GPU ve VRAM kullanımını web arayüzünde canlı olarak izleyin.
@@ -71,9 +71,9 @@ Sistem RAM'ini veya ekran kartı belleğini (VRAM) gereksiz yere tüketmemek iç
 
 * **Görsel Üretimi Çalışma Alanı:** Optimize edilmiş `stable-diffusion.cpp` motorunu kullanır. İndirilen görsel modelleri `app/models/` klasöründe saklanır.
 * **Metin Sohbeti Çalışma Alanı:** Taşınabilir `llama.cpp` sunucu motorunu kullanır. Dil modelleri (`.gguf`) `app/llm-models/` klasöründe saklanır.
-* **Konuşma Tanıma (Whisper):** Mikrofon veya ses dosyalarını işleyen `whisper.cpp` motorunu kullanır (`app/speech-models/`).
+* **Konuşma Tanıma (Whisper / Duyu / Seda):** Whisper modelleri `whisper.cpp` ile, Duyu ve Seda Python worker'larıyla (`scripts/workers/speech-*.py`) çalışır (`app/speech-models/`).
 * **Metinden Sese (TTS):** Türkçe motorlar Python worker'ları (`scripts/workers/tts-*.py`), Kokoro ise `kokoro-js` ile çalışır (`app/tts-models/`).
-* **Müzik / Ses Efekti ve Video:** PyTorch + diffusers / transformers worker'ları (`scripts/workers/music-worker.py`, `video-generator-worker.py`); modeller `app/music-models/` ve `app/video-models/` klasörlerindedir.
+* **Müzik / Ses Efekti ve Video:** PyTorch + diffusers / transformers worker'ları (`scripts/workers/music-worker.py`, `stable-audio-worker.py`, `video-generator-worker.py`); modeller `app/music-models/` ve `app/video-models/` klasörlerindedir.
 
 ---
 
@@ -113,9 +113,9 @@ Uygulama, entegre motorlar tarafından doğrudan yüklenebilen tek dosyalık yer
 | Çalışma Alanı | Desteklenen Formatlar | Dosya Konumu | Notlar |
 | :--- | :--- | :--- | :--- |
 | **Metin Sohbeti (LLM)** | `.gguf` (llama.cpp) | `app/llm-models/` | Qwen 2.5, Llama 3, Mistral, Gemma vb. GGUF formatındaki tüm açık dil modelleri. Görsel anlama (Vision) için uyumlu `mmproj` dosyası da eklenebilir. |
-| **Sesten Metne (STT)** | whisper.cpp `.bin`, Duyu ONNX | `app/speech-models/` | Whisper (tiny, base, small, large-v3-turbo) ve Türkçe için Duyu-small (FLEURS-tr %7.87 WER). |
+| **Sesten Metne (STT)** | whisper.cpp `.bin`, Duyu ONNX, Seda (sherpa-onnx) | `app/speech-models/` | Whisper (tiny, base, small, large-v3-turbo); Türkçe için Duyu-small (Kaan Aydınlı, FLEURS-tr %7.87 WER) ve Seda-v0.2 (Ahmet Atasoğlu, FLEURS-tr %6.38 WER; noktalama, büyük harf ve rakamları kendisi yazar, CC BY-SA 4.0). |
 | **Metinden Sese (TTS)** | Model klasörleri / `.json` tanımları | `app/tts-models/` | Türkçe: Antalia-2 Mini, Ahenk Cep, EMA Lightning, Supertonic-3, OmniVoice. Kokoro yalnızca İngilizce. XTTS, Chatterbox, CosyVoice ve Piper bu sürümde entegre değildir. |
-| **Müzik / Ses Efekti** | Diffusers / AudioCraft ağırlıkları | `app/music-models/` | MusicGen Small/Medium/Large (32 kHz), AudioLDM-S, AudioLDM 2, AudioLDM 2 Large (16 kHz). Stable Audio entegre değildir. |
+| **Müzik / Ses Efekti** | Stable Audio 3 / Diffusers / AudioCraft klasörleri | `app/music-models/` | Stable Audio 3 Small Music, Small SFX (en fazla 120 sn) ve Medium (NVIDIA GPU, en fazla 300 sn), 44.1 kHz stereo; Hugging Face lisans onayı + HF Token gerekir (Stability AI Community License). MusicGen Small/Medium/Large (32 kHz), AudioLDM-S, AudioLDM 2, AudioLDM 2 Large (16 kHz). |
 | **Video** | Diffusers klasörleri / `.ckpt` | `app/video-models/` | AnimateDiff v1.5 v2, Wan 2.1 T2V 1.3B (480p), SVD-XT 1.1 (görselden video). LTX-Video entegre değildir. Bulutta MiniMax Hailuo 02 / 2.3. |
 
 ---
@@ -139,9 +139,9 @@ SansursuzLokalAIStudyosu-V2/
     ├── frontend/              # Web arayüzü kaynak kodları (React + Vite)
     ├── models/                # Görsel modelleri (.safetensors, .ckpt)
     ├── llm-models/            # Dil modelleri (.gguf)
-    ├── speech-models/         # Whisper (.bin) ve Duyu ses tanıma modelleri
+    ├── speech-models/         # Whisper (.bin), Duyu ve Seda ses tanıma modelleri
     ├── tts-models/            # Seslendirme (TTS) modelleri
-    ├── music-models/          # MusicGen / AudioLDM modelleri
+    ├── music-models/          # Stable Audio 3 / MusicGen / AudioLDM modelleri
     ├── video-models/          # AnimateDiff / Wan 2.1 / SVD modelleri
     ├── reference-voices/      # Ses klonlama referans kayıtları
     └── outputs/               # Üretilen görseller ve parametre kayıtları
@@ -275,7 +275,10 @@ Projemiz **%100 bağımsız (self-contained)** mimaridedir; işletim sisteminize
   Vulkan motoru, `vulkaninfo` ile harici (discrete) ekran kartını Windows ve Linux'ta otomatik seçer (örn. AMD Ryzen dahili grafik + NVIDIA kart). Elle zorlamak için: `SD_VULKAN_DEVICE=vulkan1 ./linux.sh` (Windows'ta `set SD_VULKAN_DEVICE=vulkan1`).
 
 * **Türkçe TTS / Müzik / Video "Python paketleri bulunamadı" Hatası:**  
-  Bu özellikler ilk kurulumda `app/tools/python-env` içine kurulan özel Python ortamını kullanır. Kurulum yarıda kaldıysa veya başarısız olduysa uygulamayı kapatıp `scripts\setup\setup-python.ps1` betiğini sağ tık > "PowerShell ile Çalıştır" ile yeniden çalıştırın. Linux / macOS'ta uygulama conda / sistem Python ortamlarını tarar ve gerekli paketleri içe aktarabilen ortamı seçer. Belirli bir ortam kullanmak için `app/config/python-paths.json` dosyasına örneğin `{"video": "C:\\yol\\python.exe", "tts-omnivoice": "C:\\yol\\python.exe"}` yazın.
+  Bu özellikler ilk kurulumda `app/tools/python-env` içine kurulan özel Python ortamını kullanır. Kurulum yarıda kaldıysa veya başarısız olduysa uygulamayı kapatıp `scripts\setup\setup-python.ps1` betiğini sağ tık > "PowerShell ile Çalıştır" ile yeniden çalıştırın. Bir güncelleme yeni paketler eklediğinde `windows.bat` eksikleri bir sonraki açılışta kendisi tamamlar. Linux / macOS'ta uygulama conda / sistem Python ortamlarını tarar ve gerekli paketleri içe aktarabilen ortamı seçer; paketleri kendiniz kurmak için PyTorch'tan sonra `pip install -r scripts/setup/requirements-ai.txt` ve ardından `pip install --no-deps -r scripts/setup/requirements-ai-nodeps.txt` çalıştırın. Belirli bir ortam kullanmak için `app/config/python-paths.json` dosyasına örneğin `{"video": "C:\\yol\\python.exe", "tts-omnivoice": "C:\\yol\\python.exe"}` yazın.
+
+* **Stable Audio 3 İndirmesi "gated" / 401 Hatası Veriyor:**  
+  Stable Audio 3 modelleri Hugging Face'te lisans onayı ister. Model sayfasında (örn. `huggingface.co/stabilityai/stable-audio-3-small-music`) giriş yapıp lisansı kabul edin, ardından Model Merkezi > **HF Token Ekle** ile "Read" yetkili token'ınızı kaydedip indirmeyi yeniden başlatın. Small Music, Small SFX ve Medium için onay ayrı ayrı verilir.
 
 * **Başka Bir Cihazdan (Ağ Üzerinden) Erişim:**  
   Güvenlik için sunucu yalnızca `127.0.0.1` üzerinde dinler ve yabancı `Host` başlıklarını reddeder. Yerel ağdan erişmek için `LISTEN_HOST=0.0.0.0` ve `ALLOWED_HOSTS=192.168.1.20` (bilgisayarınızın IP'si) ortam değişkenleriyle başlatın.

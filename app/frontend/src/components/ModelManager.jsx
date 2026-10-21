@@ -545,6 +545,51 @@ const MUSIC_MODEL_LIBRARY = [
       },
     ],
   },
+  {
+    group: "Stable Audio 3 (Stability AI, 44.1 kHz stereo)",
+    items: [
+      {
+        id: "stable-audio-3-small-music",
+        name: "Stable Audio 3 Small Music (433M)",
+        filename: "stable-audio-3-small-music",
+        snapshotId: "stable-audio-3-small-music",
+        format: "Stable Audio 3 (klasör)",
+        approxSize: "3.5 GB",
+        resolution: "44.1 kHz stereo, en fazla 120 sn",
+        isGated: true,
+        notes: "8 adımda müzik üretir, işlemcide bile hızlıdır. Lisans onayı ve HF Token gerekir. Stability AI Community License + Gemma kullanım şartları.",
+        pageUrl: "https://huggingface.co/stabilityai/stable-audio-3-small-music",
+        recommendedTiers: ["Low", "Mid", "High"],
+      },
+      {
+        id: "stable-audio-3-small-sfx",
+        name: "Stable Audio 3 Small SFX (433M)",
+        filename: "stable-audio-3-small-sfx",
+        snapshotId: "stable-audio-3-small-sfx",
+        format: "Stable Audio 3 (klasör)",
+        approxSize: "3.5 GB",
+        resolution: "44.1 kHz stereo, en fazla 120 sn",
+        isGated: true,
+        notes: "Ses efekti, ambiyans ve foley üretir; işlemcide bile hızlıdır. Lisans onayı ve HF Token gerekir. Stability AI Community License + Gemma kullanım şartları.",
+        pageUrl: "https://huggingface.co/stabilityai/stable-audio-3-small-sfx",
+        recommendedTiers: ["Low", "Mid", "High"],
+      },
+      {
+        id: "stable-audio-3-medium",
+        name: "Stable Audio 3 Medium (1.4B)",
+        filename: "stable-audio-3-medium",
+        snapshotId: "stable-audio-3-medium",
+        format: "Stable Audio 3 (klasör)",
+        approxSize: "10.4 GB",
+        resolution: "44.1 kHz stereo, en fazla 300 sn",
+        minVramGb: 8,
+        isGated: true,
+        notes: "Daha uzun ve daha kaliteli parçalar. NVIDIA ekran kartı gerekir. Lisans onayı ve HF Token gerekir. Stability AI Community License + Gemma kullanım şartları.",
+        pageUrl: "https://huggingface.co/stabilityai/stable-audio-3-medium",
+        recommendedTiers: ["Mid", "High"],
+      },
+    ],
+  },
 ];
 
 const VIDEO_MODEL_LIBRARY = [
@@ -905,9 +950,9 @@ function ModelManager({
       group: "Whisper Speech Models",
       items: normalizedLocalModels.filter((model) => model.url).map((model) => ({
         ...model,
-        format: "Whisper.cpp",
+        format: model.engine === "seda" ? "sherpa-onnx (klasör)" : model.engine === "duyu" ? "ONNX (klasör)" : "Whisper.cpp",
         approxSize: model.size,
-        notes: `${model.language || "Speech"} transcription model. Stored in app/speech-models/.`,
+        notes: model.notes || `${model.language || "Speech"} transcription model. Stored in app/speech-models/.`,
         recommendedTiers: [model.tier || (Number(model.sizeBytes) >= 1000000000 ? "High" : Number(model.sizeBytes) >= 300000000 ? "Mid" : "Low")],
       })),
     }];
@@ -3328,7 +3373,7 @@ function ModelManager({
           Download Model from URL
         </h4>
         <p style={{ fontSize: "0.75rem", color: "var(--md-sys-color-outline)", marginBottom: "12px" }}>
-          Download any {activeModelType === "image" ? "Safetensors" : activeModelType === "text" ? "GGUF" : activeModelType === "speech" ? "Whisper .bin" : activeModelType === "video" ? "Wan 2.1 / AnimateDiff / LTX" : activeModelType === "music" ? "MusicGen / Stable Audio" : "Kokoro manifest"} model from Hugging Face directly to your models folder.
+          Download any {activeModelType === "image" ? "Safetensors" : activeModelType === "text" ? "GGUF" : activeModelType === "speech" ? "Whisper .bin" : activeModelType === "video" ? "Wan 2.1 / AnimateDiff / SVD" : activeModelType === "music" ? "MusicGen / Stable Audio" : "Kokoro manifest"} model from Hugging Face directly to your models folder.
         </p>
         <form onSubmit={handleUrlDownloadSubmit} style={{ display: "flex", gap: "8px" }}>
           <input
@@ -3395,7 +3440,7 @@ function ModelManager({
           <FolderOpen className="import-icon" />
           <span style={{ fontWeight: 600 }}>Choose weights dosya</span>
           <span style={{ fontSize: "0.75rem", color: "var(--md-sys-color-outline)", textAlign: "center" }}>
-            Select {activeModelType === "image" ? "`.safetensors` or `.ckpt` weights." : activeModelType === "text" ? "`.gguf` weights." : activeModelType === "speech" ? "`whisper.cpp .bin` weights." : activeModelType === "video" ? "`Wan 2.1 / AnimateDiff / LTX` weights." : activeModelType === "music" ? "`MusicGen / Stable Audio` weights." : "`Kokoro .json` manifest."}
+            Select {activeModelType === "image" ? "`.safetensors` or `.ckpt` weights." : activeModelType === "text" ? "`.gguf` weights." : activeModelType === "speech" ? "`whisper.cpp .bin` weights." : activeModelType === "video" ? "`Wan 2.1 / AnimateDiff / SVD` weights." : activeModelType === "music" ? "`MusicGen / Stable Audio` weights." : "`Kokoro .json` manifest."}
           </span>
         </label>
 
@@ -3405,7 +3450,7 @@ function ModelManager({
             Download Model from URL
           </h4>
           <p style={{ fontSize: "0.75rem", color: "var(--md-sys-color-outline)", marginBottom: "12px" }}>
-            Download any {activeModelType === "image" ? "Safetensors" : activeModelType === "text" ? "GGUF" : activeModelType === "speech" ? "Whisper .bin" : activeModelType === "video" ? "Wan 2.1 / AnimateDiff / LTX" : activeModelType === "music" ? "MusicGen / Stable Audio" : "Kokoro manifest"} model from Hugging Face directly to your models folder.
+            Download any {activeModelType === "image" ? "Safetensors" : activeModelType === "text" ? "GGUF" : activeModelType === "speech" ? "Whisper .bin" : activeModelType === "video" ? "Wan 2.1 / AnimateDiff / SVD" : activeModelType === "music" ? "MusicGen / Stable Audio" : "Kokoro manifest"} model from Hugging Face directly to your models folder.
           </p>
           <form onSubmit={handleUrlDownloadSubmit} style={{ display: "flex", gap: "8px" }}>
             <input

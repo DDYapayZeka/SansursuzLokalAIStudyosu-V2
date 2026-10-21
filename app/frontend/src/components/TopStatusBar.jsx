@@ -132,7 +132,7 @@ function TopStatusBar({
 
   return (
     <div className="top-status-bar">
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <div className="top-status-left">
         <button
           onClick={onToggleSidebar}
           className="sidebar-toggle-btn"
@@ -149,8 +149,8 @@ function TopStatusBar({
           {(activeModel || (typeof isLlmLoaded === "string" && isLlmLoaded)) && (
             <>
               <span style={{ color: "var(--md-sys-color-outline-variant)" }}>|</span>
-              <span 
-                style={{ color: "var(--md-sys-color-primary)", fontWeight: 700 }}
+              <span
+                style={{ color: "var(--md-sys-color-primary)", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}
                 title={activeModel || isLlmLoaded}
               >
                 {truncateModelName(activeModel || isLlmLoaded)}
@@ -235,11 +235,11 @@ function TopStatusBar({
             <DownloadCloud size={15} style={{ animation: "pulse 1.5s infinite", color: "#60a5fa", zIndex: 1, flexShrink: 0 }} />
             <span style={{ zIndex: 1, whiteSpace: "nowrap" }}>
               {downloadInfo.active 
-                ? `${truncateModelName(downloadInfo.displayName || downloadInfo.name || downloadInfo.filename || "Model")} %${Math.min(100, Math.max(0, Math.round(downloadInfo.percent ?? downloadInfo.progress ?? 0)))}` 
+                ? `%${Math.min(100, Math.max(0, Math.round(downloadInfo.percent ?? downloadInfo.progress ?? 0)))} ${truncateModelName(downloadInfo.displayName || downloadInfo.name || downloadInfo.filename || "Model")}`
                 : "Kuyruk Bekliyor"}
             </span>
             {(downloadInfo.speed_mb_s > 0 || (typeof downloadInfo.speed === "string" && downloadInfo.speed && !downloadInfo.speed.startsWith("0 "))) && (
-              <span style={{ zIndex: 1, opacity: 0.85, fontSize: "0.74rem", fontFamily: "monospace" }}>
+              <span className="island-speed" style={{ zIndex: 1, opacity: 0.85, fontSize: "0.74rem", fontFamily: "monospace" }}>
                 • {downloadInfo.speed_mb_s > 0 ? `${downloadInfo.speed_mb_s} MB/s` : downloadInfo.speed}
               </span>
             )}

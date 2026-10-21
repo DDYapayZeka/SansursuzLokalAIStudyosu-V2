@@ -22,6 +22,7 @@ $envPython  = Join-Path $envDir "Scripts\python.exe"
 $readyFile  = Join-Path $envDir ".ddyz-ready.json"
 $failedFile = Join-Path $toolsDir "python-env.failed.txt"
 $requirements = Join-Path $scriptDir "requirements-ai.txt"
+$requirementsNoDeps = Join-Path $scriptDir "requirements-ai-nodeps.txt"
 
 function Info { param([string]$m); Write-Host "   >>  $m" -ForegroundColor Cyan }
 function Ok   { param([string]$m); Write-Host "   OK  $m" -ForegroundColor Green }
@@ -44,10 +45,25 @@ function Get-TorchBackend {
     }
 }
 
+function Get-RequirementsHash {
+    # Fingerprint of both requirement files: when an update adds packages, an existing environment
+    # is topped up instead of being reported as ready.
+    $text = (Get-Content -Raw $requirements) + "`n" + (Get-Content -Raw $requirementsNoDeps)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes(($text -replace "`r", "")))
+    return ([System.BitConverter]::ToString($bytes) -replace "-", "").ToLower()
+}
+
 try {
+    $requirementsHash = Get-RequirementsHash
     if ((Test-Path $readyFile) -and (Test-Path $envPython) -and -not $Force) {
-        Ok "Python AI components already installed (app/tools/python-env)."
-        exit 0
+        $ready = $null
+        try { $ready = Get-Content -Raw $readyFile | ConvertFrom-Json } catch {}
+        if ($ready -and $ready.requirementsHash -eq $requirementsHash) {
+            Ok "Python AI components already installed (app/tools/python-env)."
+            exit 0
+        }
+        Info "New Python AI components were added by an update; installing only what is missing..."
     }
     New-Item -ItemType Directory -Force -Path $toolsDir, $uvDir | Out-Null
     Remove-Item $failedFile -Force -ErrorAction SilentlyContinue
@@ -82,8 +98,11 @@ try {
     Info "Installing PyTorch ($TorchBackend) and AI packages. This downloads several GB and can take a while..."
     & $uvExe pip install --python $envPython torch torchvision torchaudio -r $requirements --torch-backend $TorchBackend
     if ($LASTEXITCODE -ne 0) { throw "Package installation failed." }
+    # Packages whose declared pins conflict with the environment (see the file for why this is safe).
+    & $uvExe pip install --python $envPython --no-deps -r $requirementsNoDeps
+    if ($LASTEXITCODE -ne 0) { throw "Package installation (Seda / Stable Audio 3) failed." }
 
-    $check = "import torch, transformers, diffusers, soundfile, onnxruntime, sentencepiece, antalia_mini, ema_lightning, trnorm, supertonic, omnivoice, imageio_ffmpeg, json; print(json.dumps({'torch': torch.__version__, 'cuda': torch.cuda.is_available(), 'transformers': transformers.__version__, 'diffusers': diffusers.__version__}))"
+    $check = "import torch, transformers, diffusers, soundfile, onnxruntime, sentencepiece, antalia_mini, ema_lightning, trnorm, supertonic, omnivoice, imageio_ffmpeg, sedalib, sherpa_onnx, stable_audio_3, json; print(json.dumps({'torch': torch.__version__, 'cuda': torch.cuda.is_available(), 'transformers': transformers.__version__, 'diffusers': diffusers.__version__}))"
     $result = & $envPython -c $check
     if ($LASTEXITCODE -ne 0) { throw "Installed packages could not be imported." }
     $info = $result | Select-Object -Last 1 | ConvertFrom-Json
@@ -95,6 +114,7 @@ try {
         cuda = $info.cuda
         transformers = $info.transformers
         diffusers = $info.diffusers
+        requirementsHash = $requirementsHash
         installedAt = (Get-Date).ToString("s")
     } | ConvertTo-Json | Out-File -FilePath $readyFile -Encoding utf8
 

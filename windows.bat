@@ -56,6 +56,11 @@ if not exist "%APP%\tools\python-env\.ddyz-ready.json" if not exist "%APP%\tools
     set SETUP_REASON=Python yapay zeka bilesenleri eksik.
     goto :run_setup
 )
+:: After an in-app update, top up the Python environment with newly added packages. This returns
+:: within a second when nothing changed; a failure here never blocks the launch.
+if exist "%APP%\tools\python-env\.ddyz-ready.json" (
+    powershell -ExecutionPolicy Bypass -File "%~dp0scripts\setup\setup-python.ps1"
+)
 if exist "%CUDA_BACKEND%" goto :launch
 if exist "%VULKAN_BACKEND%" goto :launch
 set SETUP_REASON=Yuklu motor dosyasi bulunamadi.

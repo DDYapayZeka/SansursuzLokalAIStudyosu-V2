@@ -1,0 +1,13 @@
+# Installed after requirements-ai.txt with --no-deps: their declared pins conflict with the rest of
+# the environment, but the code itself works with it. Their real dependencies are listed in
+# requirements-ai.txt.
+#  - sedalib asks for huggingface_hub>=2.1.1, while diffusers needs <2.0; sedalib only calls
+#    snapshot_download, which huggingface_hub 1.x has.
+#  - stable-audio-3 pins torch/torchaudio==2.7.1; it runs on the CUDA build chosen by setup-python.ps1.
+
+# Seda-v0.2 Turkish speech recognition (Apache-2.0 library; model CC BY-SA 4.0)
+sedalib==1.0.0
+
+# Stable Audio 3 inference code (MIT; models under the Stability AI Community License), not on PyPI,
+# so it is installed from a pinned source archive (no git needed).
+stable-audio-3 @ https://github.com/Stability-AI/stable-audio-3/archive/77e0398c26f7d22d801ec1bb036307e8b231f741.zip

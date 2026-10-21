@@ -230,9 +230,16 @@ export default function AudioStudio({
       showAlert?.({ title: uiText("Bu Sürümde Entegre Değil", "Not Integrated in This Version"), message: model.notes || `${model.name} bu sürümde kullanılamaz.` });
       return;
     }
+    // Gated repos (Stable Audio 3) need the license accepted on Hugging Face and a saved HF token.
+    const gatedNote = model.isGated
+      ? uiText(
+          `\n\nBu model Hugging Face'te lisans onayı ister: önce ${model.pageUrl} sayfasında lisansı kabul edin ve Model Merkezi'nden "HF Token Ekle" ile token'ınızı kaydedin.`,
+          `\n\nThis model is gated on Hugging Face: accept the license on ${model.pageUrl} first and save your token with "Add HF Token" in the Model Hub.`
+        )
+      : "";
     const proceed = await showConfirm?.({
       title: uiText("Model İndirilsin mi?", "Download Model?"),
-      message: uiText(`"${model.name}" modeli (${model.approxSize || "?"}) bilgisayarınıza indirilecek. Onaylıyor musunuz?`, `"${model.name}" (${model.approxSize || "?"}) will be downloaded to your computer. Continue?`),
+      message: uiText(`"${model.name}" modeli (${model.approxSize || "?"}) bilgisayarınıza indirilecek. Onaylıyor musunuz?`, `"${model.name}" (${model.approxSize || "?"}) will be downloaded to your computer. Continue?`) + gatedNote,
       confirmLabel: uiText("Modeli İndir", "Download Model"),
       cancelLabel: "Vazgeç",
     });
@@ -442,12 +449,15 @@ export default function AudioStudio({
     const genStartTime = performance.now();
     try {
       const isSfxModel = musicModel.includes("sfx") || musicModel.includes("audioldm");
+      const isStableAudio = musicModel.startsWith("stable-audio");
+      // Stable Audio 3 Small is limited to 120 s; the server applies the same cap.
+      const duration = Math.min(musicDuration, chosenMusicModel?.maxDuration || 300);
       const res = await fetch("/api/audio/music", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: musicPrompt,
-          duration: musicDuration,
+          duration,
           model: musicModel,
           mode: isSfxModel ? "sfx" : "music",
         }),
@@ -462,17 +472,17 @@ export default function AudioStudio({
           const isSfx = Boolean(data.audio?.isSfx);
           setAudioMetadata({
             model: musicModelFullName,
-            engineType: isSfx ? "Yapay Zekâ Ses Efekti (SFX / Foley)" : "Meta MusicGen",
-            scale: `${data.audio?.sampleRate || 32000} Hz • 16-bit PCM WAV • Mono`,
+            engineType: isSfx ? "Yapay Zekâ Ses Efekti (SFX / Foley)" : isStableAudio ? "Stability AI Stable Audio 3" : "Meta MusicGen",
+            scale: `${data.audio?.sampleRate || 32000} Hz • 16-bit PCM WAV • ${(data.audio?.channels || 1) > 1 ? "Stereo" : "Mono"}`,
             genDuration: data.audio?.genDuration || `${elapsedSec}s`,
-            mode: isSfx ? `Yapay Zekâ Ses Efekti (${musicDuration} Saniye)` : `Yapay Zekâ Müzik Üretimi (${musicDuration} Saniye)`,
-            params: `Uzunluk: ${musicDuration}s • Otoregresif Nöral Ses Sentezi (Seed: ${data.audio?.seed || "Rastgele"})`,
+            mode: isSfx ? `Yapay Zekâ Ses Efekti (${duration} Saniye)` : `Yapay Zekâ Müzik Üretimi (${duration} Saniye)`,
+            params: `Uzunluk: ${duration}s • ${isStableAudio ? "8 Adımlı Latent Difüzyon" : "Otoregresif Nöral Ses Sentezi"} (Seed: ${data.audio?.seed || "Rastgele"})`,
             prompt: musicPrompt,
           });
           setLastGeneratedInfo({
             type: isSfx ? "Ses Efekti (SFX)" : "Müzik / Parça",
             prompt: musicPrompt,
-            duration: `${musicDuration}s (Üretim: ${data.audio?.genDuration || `${elapsedSec}s`})`,
+            duration: `${duration}s (Üretim: ${data.audio?.genDuration || `${elapsedSec}s`})`,
             model: musicModelFullName,
           });
           fetchAudioHistory();
@@ -520,7 +530,9 @@ export default function AudioStudio({
         if (url) {
           setAudioUrl(url);
           const elapsedSec = ((performance.now() - genStartTime) / 1000).toFixed(1);
-          const modelName = sfxModel.includes("large")
+          const modelName = sfxModel.startsWith("stable-audio")
+            ? "Stable Audio 3 Small SFX (44.1 kHz Stereo)"
+            : sfxModel.includes("large")
             ? "AudioLDM 2 Large (En İyi - Sinematik Foley)"
             : (sfxModel.includes("2") || sfxModel.includes("base"))
             ? "AudioLDM 2 Base (En Verimli Orta - Dengeli)"
@@ -528,7 +540,7 @@ export default function AudioStudio({
           setAudioMetadata({
             model: modelName,
             engineType: "Yapay Zekâ Ses Efekti (SFX / Foley)",
-            scale: `${data.audio?.sampleRate || 16000} Hz • 16-bit PCM`,
+            scale: `${data.audio?.sampleRate || 16000} Hz • 16-bit PCM${(data.audio?.channels || 1) > 1 ? " • Stereo" : ""}`,
             genDuration: data.audio?.genDuration || `${elapsedSec}s`,
             mode: `Yapay Zekâ Ses Efekti (${sfxDuration} Saniye)`,
             params: `Model: ${modelName} • Uzunluk: ${sfxDuration}s • Akustik Difüzyon (Seed: ${data.audio?.seed || "Rastgele"})`,
@@ -1216,7 +1228,11 @@ export default function AudioStudio({
                 border: "1px solid rgba(16, 185, 129, 0.2)",
               }}
             >
-              <strong>Meta AudioCraft MusicGen:</strong> Yazdığınız Türkçe veya İngilizce metin tarifine göre enstrümantal fon müziği, melodi ve ritim üretir.
+              {musicModel.startsWith("stable-audio") ? (
+                <><strong>Stability AI Stable Audio 3:</strong> Yazdığınız tarife göre 44.1 kHz stereo müzik üretir; 8 adımda çalıştığı için çok hızlıdır. En iyi sonuç için İngilizce tarif önerilir.{chosenMusicModel?.maxDuration && chosenMusicModel.maxDuration < 300 ? ` Bu model en fazla ${chosenMusicModel.maxDuration} saniye üretir.` : ""}</>
+              ) : (
+                <><strong>Meta AudioCraft MusicGen:</strong> Yazdığınız Türkçe veya İngilizce metin tarifine göre enstrümantal fon müziği, melodi ve ritim üretir.</>
+              )}
             </div>
 
             <div style={{ marginBottom: "16px" }}>
@@ -1461,7 +1477,11 @@ export default function AudioStudio({
                 border: "1px solid rgba(6, 182, 212, 0.25)",
               }}
             >
-              <strong>AudioLDM 2 (Akustik Foley & SFX Motoru):</strong> Müzik veya melodi karıştırmadan, Türkçe veya İngilizce tarifinize göre saf ses efekti, ambiyans ve foley sesleri üretir.
+              {sfxModel.startsWith("stable-audio") ? (
+                <><strong>Stable Audio 3 Small SFX:</strong> Tarifinize göre 44.1 kHz stereo ses efekti, ambiyans ve foley sesleri üretir; işlemcide bile hızlıdır.</>
+              ) : (
+                <><strong>AudioLDM 2 (Akustik Foley & SFX Motoru):</strong> Müzik veya melodi karıştırmadan, Türkçe veya İngilizce tarifinize göre saf ses efekti, ambiyans ve foley sesleri üretir.</>
+              )}
             </div>
 
             <div style={{ marginBottom: "14px" }}>

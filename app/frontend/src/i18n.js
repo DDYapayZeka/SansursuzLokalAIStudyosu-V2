@@ -81,6 +81,17 @@ export const TR_TO_EN_EXACT = {
   "Yerel YZ": "Local AI",
   "Kaynaklar": "Sources",
   "Bu model çeviri yapmaz (yalnızca yazıya döker). İngilizce çeviri için Whisper Small veya Base seçin.": "This model cannot translate (transcription only). Choose Whisper Small or Base to translate to English.",
+  "Yazdığınız tarife göre 44.1 kHz stereo müzik üretir; 8 adımda çalıştığı için çok hızlıdır. En iyi sonuç için İngilizce tarif önerilir.":
+    "Generates 44.1 kHz stereo music from your description; it runs in 8 steps, so it is very fast. English descriptions give the best results.",
+  "Bu model en fazla 120 saniye üretir.": "This model generates up to 120 seconds.",
+  "Tarifinize göre 44.1 kHz stereo ses efekti, ambiyans ve foley sesleri üretir; işlemcide bile hızlıdır.":
+    "Generates 44.1 kHz stereo sound effects, ambience and foley from your description; fast even on the CPU.",
+  "Yazdığınız Türkçe veya İngilizce metin tarifine göre enstrümantal fon müziği, melodi ve ritim üretir.":
+    "Generates instrumental background music, melody and rhythm from your Turkish or English description.",
+  "Müzik veya melodi karıştırmadan, Türkçe veya İngilizce tarifinize göre saf ses efekti, ambiyans ve foley sesleri üretir.":
+    "Generates pure sound effects, ambience and foley from your Turkish or English description, without mixing in music.",
+  "Seda-v0.2 (Ahmet Atasoğlu): Yalnızca Türkçe, CPU'da çalışan Zipformer modeli (FLEURS-tr %6.38 WER). Noktalama, büyük harf, kesme işareti ve rakamları kendisi yazar; altyazı zamanları konuşma aralarından gerçek olarak çıkarılır.":
+    "Seda-v0.2 (Ahmet Atasoğlu): Turkish-only Zipformer model that runs on the CPU (FLEURS-tr 6.38% WER). It writes punctuation, capitals, apostrophes and digits itself; subtitle times come from the real pauses in the speech.",
   "Otomatik": "Auto",
   "Modelin kaç katmanının GPU VRAM'ine aktarılacağını belirler. Otomatik (önerilen): llama.cpp, VRAM'e sığan en fazla katmanı kendisi seçer. Elle verilen değer VRAM'i aşarsa Windows modeli sistem belleğine taşır ve yanıtlar çok yavaşlar veya zaman aşımına uğrar.": "How many model layers are offloaded to GPU VRAM. Auto (recommended): llama.cpp picks the most layers that fit in VRAM. A manual value larger than VRAM makes Windows spill the model to system memory, so replies become very slow or time out.",
   "Model klasöründen sil": "Delete from models folder",

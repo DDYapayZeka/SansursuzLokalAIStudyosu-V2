@@ -25,6 +25,14 @@ httpx
 onnxruntime
 sentencepiece
 
+# Seda-v0.2 speech recognition (sherpa-onnx) and its punctuation formatter; sedalib itself is in
+# requirements-ai-nodeps.txt
+sherpa-onnx==1.13.8
+tokenizers
+
+# Stable Audio 3 (music and sound effects); the stable-audio-3 package itself is in requirements-ai-nodeps.txt
+einops-exts>=0.0.4
+
 # Turkish text-to-speech engines
 antalia-mini
 ema-lightning==1.1.2

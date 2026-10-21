@@ -418,9 +418,9 @@ export default function SpeechTranscriber({
   const language = speechSettings?.language || "auto";
   const threads = speechSettings?.threads || 4;
   const backendPreference = speechSettings?.backendPreference || "auto";
-  // Whisper large-v3-turbo was not trained for translation and Duyu is transcription-only:
-  // both silently return the original language, so the option is disabled for them.
-  const translateSupported = !/turbo|duyu/i.test(selectedModel || "");
+  // Whisper large-v3-turbo was not trained for translation, and Duyu and Seda are transcription-only:
+  // they silently return the original language, so the option is disabled for them.
+  const translateSupported = !/turbo|duyu|seda/i.test(selectedModel || "");
   const translate = speechSettings?.translate === true && translateSupported;
 
   const setLanguage = (val) => setSpeechSettings((prev) => ({ ...prev, language: val }));
@@ -966,6 +966,11 @@ export default function SpeechTranscriber({
             {selectedModel === "duyu-small" && (
               <span style={{ fontSize: "0.75rem", color: "var(--md-sys-color-primary)", marginTop: "4px", display: "block" }}>
                 Duyu-small: Türkçe ve İngilizce için optimize edilmiş 56 MB int8 ONNX Conformer modeli. CPU üzerinde çok hızlı çalışır (FLEURS-tr %7.87 WER).
+              </span>
+            )}
+            {selectedModel === "seda-v0.2" && (
+              <span style={{ fontSize: "0.75rem", color: "var(--md-sys-color-primary)", marginTop: "4px", display: "block" }}>
+                Seda-v0.2 (Ahmet Atasoğlu): Yalnızca Türkçe, CPU'da çalışan Zipformer modeli (FLEURS-tr %6.38 WER). Noktalama, büyük harf, kesme işareti ve rakamları kendisi yazar; altyazı zamanları konuşma aralarından gerçek olarak çıkarılır.
               </span>
             )}
           </label>

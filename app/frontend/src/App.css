@@ -1652,10 +1652,50 @@ html[data-theme="light"] .top-status-bar {
   transform: scale(1.04);
 }
 
+/* Left side of the top bar gives way first (model name ellipsis, download speed hidden) so the
+   telemetry chips on the right never wrap or overflow while a download is shown. */
+.top-status-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  margin-right: 12px;
+}
+
+.top-download-island {
+  flex-shrink: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.top-download-island > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1700px) {
+  .top-download-island .island-speed {
+    display: none;
+  }
+}
+
+/* On narrow windows a running download replaces the model chip instead of overlapping the right side. */
+@media (max-width: 1450px) {
+  .top-status-left:has(.top-download-island) .current-model-info {
+    display: none;
+  }
+}
+
 .current-model-info {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+  white-space: nowrap;
   font-size: 0.86rem;
   padding: 5px 12px;
   background: rgba(255, 255, 255, 0.04);
@@ -1693,6 +1733,8 @@ html[data-theme="light"] .current-model-info {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Apple Dynamic Island Telemetry Capsules */

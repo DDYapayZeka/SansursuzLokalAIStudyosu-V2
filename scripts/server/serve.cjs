@@ -181,6 +181,7 @@ const TTS_ANTALIA_WORKER = path.join(ROOT, "scripts", "workers", "tts-antalia-wo
 const TTS_OMNIVOICE_WORKER = path.join(ROOT, "scripts", "workers", "tts-omnivoice-worker.py");
 const VIDEO_WORKER = path.join(ROOT, "scripts", "workers", "video-generator-worker.py");
 const SPEECH_DUYU_WORKER = path.join(ROOT, "scripts", "workers", "speech-duyu-worker.py");
+const SPEECH_SEDA_WORKER = path.join(ROOT, "scripts", "workers", "speech-seda-worker.py");
 
 // -- Python runtime discovery ---------------------------------------------------
 // The TTS / music / video / Duyu workers are Python scripts. Instead of hard-coding
@@ -193,8 +194,10 @@ const PYTHON_REQUIREMENTS = {
   "tts-supertonic": ["supertonic"],
   "tts-omnivoice": ["omnivoice", "torch", "soundfile"],
   "speech-duyu": ["onnxruntime", "sentencepiece", "numpy"],
+  "speech-seda": ["sedalib", "sherpa_onnx", "onnxruntime", "tokenizers", "numpy"],
   "music": ["torch", "transformers", "soundfile"],
   "sfx": ["torch", "diffusers", "transformers", "soundfile"],
+  "stable-audio": ["stable_audio_3", "einops_exts", "torch", "transformers", "soundfile"],
   "video": ["torch", "diffusers", "transformers"],
 };
 const PYTHON_INSTALL_HINTS = {
@@ -204,8 +207,10 @@ const PYTHON_INSTALL_HINTS = {
   "tts-supertonic": "pip install supertonic",
   "tts-omnivoice": "pip install omnivoice (önce CUDA'lı PyTorch kurulumu önerilir)",
   "speech-duyu": "pip install numpy onnxruntime sentencepiece",
+  "speech-seda": "pip install numpy onnxruntime tokenizers sherpa-onnx && pip install --no-deps sedalib==1.0.0",
   "music": "pip install torch transformers soundfile",
   "sfx": "pip install torch diffusers transformers soundfile",
+  "stable-audio": "pip install torch transformers soundfile einops einops-exts safetensors && pip install --no-deps https://github.com/Stability-AI/stable-audio-3/archive/77e0398c26f7d22d801ec1bb036307e8b231f741.zip",
   "video": "pip install torch diffusers transformers accelerate imageio-ffmpeg (CUDA'lı PyTorch gerekir)",
 };
 const pythonResolveCache = new Map();
@@ -391,6 +396,20 @@ const SPEECH_MODEL_CATALOG = [
     pageUrl: "https://huggingface.co/KaanAydinli/Duyu-small",
   },
   {
+    id: "seda-v0.2",
+    name: "Seda-v0.2 Türkçe (Zipformer, noktalama + büyük harf + rakam)",
+    filename: "seda-v0.2",
+    size: "197 MB",
+    tier: "Low",
+    tierLabel: "Düşük: Saf CPU / Sıfır VRAM",
+    language: "Yalnızca Türkçe",
+    recommended: true,
+    engine: "seda",
+    notes: "Ahmet Atasoğlu'nun 66M parametreli Zipformer2 modeli (int8 ONNX, CC BY-SA 4.0). FLEURS-tr testinde %6.38 WER (Whisper Medium: %6.62). Noktalama, büyük harf, kesme işareti ve rakamları kendi biçimlendiricisiyle yazar; gürültülü ve telefon kayıtlarında da sağlamdır. Konuşma aralarından bölündüğü için altyazı zamanları gerçektir.",
+    url: "https://huggingface.co/atasoglu/seda-v0.2",
+    pageUrl: "https://huggingface.co/atasoglu/seda-v0.2",
+  },
+  {
     id: "tiny",
     name: "Whisper Tiny Çok Dilli (Ultra Hafif)",
     filename: "ggml-tiny.bin",
@@ -446,6 +465,11 @@ const SPEECH_MODEL_CATALOG = [
     notes: "OpenAI Whisper Large v3'ün 4 katmanlı kod çözücülü hızlandırılmış sürümü (809M parametre, 1.6 GB). Bu listedeki en yüksek doğruluk; GPU önerilir. Çeviri (İngilizceye çevirme) için eğitilmemiştir, yalnızca yazıya döker."
   },
 ];
+// Speech engines that run as Python workers on a model folder instead of whisper.cpp on a .bin file.
+const PYTHON_SPEECH_ENGINES = {
+  duyu: { folder: "duyu-small", marker: ["int8", "decoder.onnx"], worker: SPEECH_DUYU_WORKER, feature: "speech-duyu", label: "Duyu-small Türkçe ses tanıma", backend: "duyu-onnx", runtime: "onnxruntime" },
+  seda: { folder: "seda-v0.2", marker: ["final", "encoder.int8.onnx"], worker: SPEECH_SEDA_WORKER, feature: "speech-seda", label: "Seda-v0.2 Türkçe ses tanıma", backend: "seda-sherpa-onnx", runtime: "sherpa-onnx" },
+};
 const TTS_MODEL_CATALOG = [
   {
     id: "antalia-mini",
@@ -2669,10 +2693,11 @@ function getSpeechModels() {
   const catalog = SPEECH_MODEL_CATALOG.map((model) => {
     let installed = false;
     let sizeBytes = 0;
-    if (model.engine === "duyu") {
-      const duyuDir = path.join(SPEECH_MODELS, "duyu-small");
-      installed = fs.existsSync(path.join(duyuDir, "int8", "decoder.onnx"));
-      sizeBytes = installed ? getPathSize(duyuDir) : 0;
+    const pyEngine = PYTHON_SPEECH_ENGINES[model.engine];
+    if (pyEngine) {
+      const engineDir = path.join(SPEECH_MODELS, pyEngine.folder);
+      installed = fs.existsSync(path.join(engineDir, ...pyEngine.marker));
+      sizeBytes = installed ? getPathSize(engineDir) : 0;
     } else {
       const modelPath = path.join(SPEECH_MODELS, model.filename);
       installed = fs.existsSync(modelPath);
@@ -2715,9 +2740,10 @@ function resolveSpeechModel(value) {
   const raw = String(value || "").trim();
   const model = getSpeechModels().find((item) => item.id === raw || item.filename === raw) ||
     getSpeechModels().find((item) => item.installed);
-  if (!model) throw new Error("Download or import a Whisper or Duyu model first.");
-  const modelPath = model.engine === "duyu"
-    ? path.join(SPEECH_MODELS, "duyu-small")
+  if (!model) throw new Error("Download or import a Whisper, Duyu or Seda model first.");
+  const pyEngine = PYTHON_SPEECH_ENGINES[model.engine];
+  const modelPath = pyEngine
+    ? path.join(SPEECH_MODELS, pyEngine.folder)
     : path.join(SPEECH_MODELS, path.basename(model.filename));
   if (!pathInside(modelPath, SPEECH_MODELS) || !fs.existsSync(modelPath)) {
     throw new Error(`Speech model is not installed: ${model.filename}`);
@@ -3698,7 +3724,8 @@ async function startSpeech(settings = {}) {
   const model = resolveSpeechModel(settings.model);
   const backendPreference = normalizeSpeechBackendPreference(settings.backendPreference || speechSettings.backendPreference);
   const backend = getSpeechBackend(backendPreference);
-  if (model.engine !== "duyu" && !backend.cli) {
+  const pyEngine = PYTHON_SPEECH_ENGINES[model.engine];
+  if (!pyEngine && !backend.cli) {
     throw new Error(`${backend.label || "Selected"} whisper.cpp backend is not installed. Run setup or copy a compatible binary to ${backend.pathHint || "app/speech-backend"}.`);
   }
   PORT_SPEECH = await findAvailableSpeechPort();
@@ -3710,8 +3737,8 @@ async function startSpeech(settings = {}) {
     language: settings.language || speechSettings.language || "auto",
     threads: Math.max(1, Math.min(32, Number(settings.threads) || speechSettings.threads || 4)),
     backendPreference,
-    backendBinary: model.engine === "duyu" ? "python-onnx" : path.basename(backend.cli || "whisper-cli.exe"),
-    backendMode: model.engine === "duyu" ? "onnxruntime" : backend.mode,
+    backendBinary: pyEngine ? `python-${pyEngine.runtime}` : path.basename(backend.cli || "whisper-cli.exe"),
+    backendMode: pyEngine ? pyEngine.runtime : backend.mode,
   };
 }
 
@@ -3815,10 +3842,11 @@ function transcribeWavBuffer(buffer, options = {}) {
       filename: sourceFilename,
     };
 
-    if (model.engine === "duyu" || model.id === "duyu-small") {
+    const pyEngine = PYTHON_SPEECH_ENGINES[model.engine];
+    if (pyEngine) {
       let pyBin;
       try {
-        pyBin = requirePythonFor("speech-duyu", "Duyu-small Türkçe ses tanıma");
+        pyBin = requirePythonFor(pyEngine.feature, pyEngine.label);
       } catch (err) {
         try { fs.unlinkSync(wavPath); } catch (_) {}
         speechTranscriptionState = { active: false, phase: "Failed", progress: 0, model: model.filename, filename: sourceFilename };
@@ -3833,8 +3861,8 @@ function transcribeWavBuffer(buffer, options = {}) {
         quant: "int8",
         threads: Math.max(1, Math.min(32, Number(options.threads) || speechSettings.threads || 4))
       });
-      console.log("  [speech] Duyu-small ile transkripsiyon baslatiliyor:", wavPath);
-      const proc = trackJobProcess(spawn(pyBin, [SPEECH_DUYU_WORKER], {
+      console.log(`  [speech] ${model.name} ile transkripsiyon baslatiliyor:`, wavPath);
+      const proc = trackJobProcess(spawn(pyBin, [pyEngine.worker], {
         stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
         env: { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" },
@@ -3853,7 +3881,7 @@ function transcribeWavBuffer(buffer, options = {}) {
         try { fs.unlinkSync(wavPath); } catch (_) {}
         speechTranscriptionState = { active: false, phase: code === 0 ? "Complete" : "Failed", progress: code === 0 ? 100 : 0, model: model.filename, filename: sourceFilename };
         if (code !== 0) {
-          const message = (stderr || stdout || `Duyu worker error with exit code ${code}`).trim().slice(-1200);
+          const message = (stderr || stdout || `${model.name} worker error with exit code ${code}`).trim().slice(-1200);
           speechError = message;
           reject(new Error(message));
           return;
@@ -3861,7 +3889,7 @@ function transcribeWavBuffer(buffer, options = {}) {
         try {
           const parsed = parseWorkerJson(stdout);
           if (!parsed.ok) {
-            reject(new Error(parsed.error || "Duyu transcription failed"));
+            reject(new Error(parsed.error || `${model.name} transcription failed`));
             return;
           }
           const saved = saveTranscript({
@@ -3869,8 +3897,8 @@ function transcribeWavBuffer(buffer, options = {}) {
             model: model.filename,
             modelName: model.name,
             language: parsed.lang,
-            backend: "duyu-onnx",
-            backendMode: "onnxruntime",
+            backend: pyEngine.backend,
+            backendMode: pyEngine.runtime,
             sourceFilename,
             durationMs: parsed.durationMs || (Date.now() - startedAt),
             raw: parsed.raw,
@@ -3879,7 +3907,7 @@ function transcribeWavBuffer(buffer, options = {}) {
           // Same shape as the whisper.cpp path so history/sidebar code works for both engines.
           resolve(saved);
         } catch (err) {
-          reject(new Error(`Failed to parse Duyu output: ${err.message}`));
+          reject(new Error(`Failed to parse ${model.name} output: ${err.message}`));
         }
       });
       proc.stdin.write(payload);
@@ -6845,6 +6873,7 @@ function startModelDownload(url, overrideFilename = null, targetDir = MODELS, ki
 // Diffusers pipelines (Wan, SVD, AudioLDM) and MusicGen need a whole folder, not one file.
 // Files are listed through the HF tree API, filtered, and fetched one by one with real
 // byte-level progress into <targetDir>/<folder>/.
+const STABLE_AUDIO_FILES = [/^model\.safetensors$/i, /^model_config\.json$/i, /^(LICENSE|LICENSE_GEMMA)\.md$/i, /^NOTICE$/i, /^t5gemma-b-b-ul2\/(?!README\.md$|\.gitattributes$)/i];
 const SNAPSHOT_MODELS = {
   "wan21-t2v-1.3b": { repoId: "Wan-AI/Wan2.1-T2V-1.3B-Diffusers", dir: VIDEO_MODELS, folder: "wan21-t2v-1.3b", include: [/\.json$/i, /\.txt$/i, /spiece\.model$/i, /\.safetensors$/i], label: "Wan 2.1 T2V 1.3B (Diffusers)" },
   "svd-xt-1.1": { repoId: "vdo/stable-video-diffusion-img2vid-xt-1-1", dir: VIDEO_MODELS, folder: "svd-xt-1.1", include: [/\.json$/i, /\.fp16\.safetensors$/i], label: "Stable Video Diffusion XT 1.1 (Diffusers fp16)" },
@@ -6852,7 +6881,14 @@ const SNAPSHOT_MODELS = {
   "audioldm2-large": { repoId: "cvssp/audioldm2-large", dir: MUSIC_MODELS, folder: "audioldm2-large", include: [/\.json$/i, /\.txt$/i, /\.model$/i, /\.safetensors$/i], label: "AudioLDM 2 Large" },
   "audioldm2": { repoId: "cvssp/audioldm2", dir: MUSIC_MODELS, folder: "audioldm2", include: [/\.json$/i, /\.txt$/i, /\.model$/i, /\.safetensors$/i], label: "AudioLDM 2" },
   "duyu-small": { repoId: "KaanAydinli/Duyu-small", dir: SPEECH_MODELS, folder: "duyu-small", include: [/^int8\//i, /^duyu_small\/.*\.py$/i, /^(config|engine)\.json$/i, /\.npz$/i, /^spm\.model$/i, /^LICENSE$/i], label: "Duyu-small (int8 ONNX)" },
+  // Only the "accurate" preset (0.64 s streaming export + full-context second pass + LM), the formatter and the VAD.
+  "seda-v0.2": { repoId: "atasoglu/seda-v0.2", dir: SPEECH_MODELS, folder: "seda-v0.2", include: [/^c32\//i, /^final\//i, /^lm\//i, /^formatter\//i, /^vad\//i, /^tokens\.txt$/i, /^README\.md$/i], label: "Seda-v0.2 (int8 ONNX)" },
   "omnivoice": { repoId: "k2-fsa/OmniVoice", dir: TTS_MODELS, folder: "omnivoice", include: [/\.json$/i, /\.jinja$/i, /\.safetensors$/i], label: "OmniVoice (k2-fsa)" },
+  // Stable Audio 3 (gated: accept the license on the model page and add an HF token). The repos
+  // bundle their T5Gemma text encoder; the thumbnail and READMEs are skipped.
+  "stable-audio-3-small-music": { repoId: "stabilityai/stable-audio-3-small-music", dir: MUSIC_MODELS, folder: "stable-audio-3-small-music", include: STABLE_AUDIO_FILES, label: "Stable Audio 3 Small Music" },
+  "stable-audio-3-small-sfx": { repoId: "stabilityai/stable-audio-3-small-sfx", dir: MUSIC_MODELS, folder: "stable-audio-3-small-sfx", include: STABLE_AUDIO_FILES, label: "Stable Audio 3 Small SFX" },
+  "stable-audio-3-medium": { repoId: "stabilityai/stable-audio-3-medium", dir: MUSIC_MODELS, folder: "stable-audio-3-medium", include: STABLE_AUDIO_FILES, label: "Stable Audio 3 Medium" },
   "audioldm-small": { repoId: "cvssp/audioldm-s-full-v2", dir: MUSIC_MODELS, folder: "audioldm-s-full-v2", include: [/\.json$/i, /\.txt$/i, /\.safetensors$/i], label: "AudioLDM-S Full v2" },
 };
 
@@ -8591,19 +8627,52 @@ const server = http.createServer(async (req, res) => {
           recommendedTiers: ["Low", "Mid"],
         },
         {
-          id: "stable-audio-3-small",
-          name: "Stability AI Stable Audio 3 Small Music (entegre değil)",
-          filename: "stable-audio-3-small-music.safetensors",
-          format: "stable-audio-tools",
-          approxSize: "3.3 GB",
+          id: "stable-audio-3-small-music",
+          name: "Stable Audio 3 Small Music (433M)",
+          filename: "stable-audio-3-small-music",
+          snapshotId: "stable-audio-3-small-music",
+          format: "Stable Audio 3 (klasör)",
+          approxSize: "3.5 GB",
           resolution: "44.1 kHz stereo",
-          installed: false,
-          supported: false,
-          downloaded: has("stable-audio-3-small-music.safetensors"),
-          notes: "Gated (lisans onayı + HF token). Model, T5Gemma metin kodlayıcısı ve stable-audio-tools çalışma ortamı gerektirir; bu sürümde uygulamaya entegre edilmedi.",
-          url: "",
+          maxDuration: 120,
+          isGated: true,
+          installed: isSnapshotInstalled("stable-audio-3-small-music"),
+          notes: "Stability AI'ın 2026 müzik modeli: 8 adımda, işlemcide bile hızlı, 44.1 kHz stereo, en fazla 120 sn. İndirmek için Hugging Face'te model sayfasında lisansı kabul edip HF Token eklemeniz gerekir. Stability AI Community License (yıllık geliri 1 milyon $ altı ticari kullanım serbest) + Gemma kullanım şartları.",
+          url: "https://huggingface.co/stabilityai/stable-audio-3-small-music",
           pageUrl: "https://huggingface.co/stabilityai/stable-audio-3-small-music",
+          recommendedTiers: ["Low", "Mid", "High"],
+        },
+        {
+          id: "stable-audio-3-medium",
+          name: "Stable Audio 3 Medium (1.4B)",
+          filename: "stable-audio-3-medium",
+          snapshotId: "stable-audio-3-medium",
+          format: "Stable Audio 3 (klasör)",
+          approxSize: "10.4 GB",
+          resolution: "44.1 kHz stereo",
+          maxDuration: 300,
+          isGated: true,
+          installed: isSnapshotInstalled("stable-audio-3-medium"),
+          notes: "Stable Audio 3'ün en büyük açık modeli: daha uzun ve daha kaliteli parçalar (uygulamada en fazla 300 sn), 44.1 kHz stereo. NVIDIA ekran kartı gerekir (yaklaşık 6-7 GB VRAM). Lisans onayı ve HF Token gerekir. Stability AI Community License + Gemma kullanım şartları.",
+          url: "https://huggingface.co/stabilityai/stable-audio-3-medium",
+          pageUrl: "https://huggingface.co/stabilityai/stable-audio-3-medium",
           recommendedTiers: ["Mid", "High"],
+        },
+        {
+          id: "stable-audio-3-small-sfx",
+          name: "Stable Audio 3 Small SFX (ses efekti, 433M)",
+          filename: "stable-audio-3-small-sfx",
+          snapshotId: "stable-audio-3-small-sfx",
+          format: "Stable Audio 3 (klasör)",
+          approxSize: "3.5 GB",
+          resolution: "44.1 kHz stereo",
+          maxDuration: 120,
+          isGated: true,
+          installed: isSnapshotInstalled("stable-audio-3-small-sfx"),
+          notes: "Stable Audio 3'ün ses efekti modeli: 44.1 kHz stereo foley ve ortam sesleri, işlemcide bile hızlı. Lisans onayı ve HF Token gerekir. Stability AI Community License + Gemma kullanım şartları.",
+          url: "https://huggingface.co/stabilityai/stable-audio-3-small-sfx",
+          pageUrl: "https://huggingface.co/stabilityai/stable-audio-3-small-sfx",
+          recommendedTiers: ["Low", "Mid", "High"],
         },
       ];
       return json(res, 200, { ok: true, models });
@@ -8652,12 +8721,19 @@ const server = http.createServer(async (req, res) => {
       const wavFilename = `music_${stamp}.wav`;
       const jsonFilename = `music_${stamp}.json`;
       const wavPath = path.join(AUDIO_OUTPUTS, wavFilename);
-      const duration = Math.min(300, Math.max(2, Number(body.duration) || 10));
       const model = String(body.model || "musicgen-small");
+      const isStableAudio = Boolean(SNAPSHOT_MODELS[model]) && model.startsWith("stable-audio-3-");
+      // Stable Audio 3 Small is trained for up to 120 s; Medium and MusicGen go up to the app's 300 s.
+      const maxDuration = isStableAudio && model.includes("small") ? 120 : 300;
+      const duration = Math.min(maxDuration, Math.max(2, Number(body.duration) || 10));
       const mode = body.mode || (model.includes("audioldm") || model.includes("sfx") ? "sfx" : "music");
-      if (/stable-audio/i.test(model)) {
+      if (/stable-audio/i.test(model) && !isStableAudio) {
         isAudioGenerating = false;
-        return json(res, 501, { ok: false, error: "Stable Audio modelleri bu sürümde entegre değil (stable-audio-tools çalışma ortamı gerekir). Müzik için MusicGen Small/Medium/Large, ses efekti için AudioLDM modellerini kullanın." });
+        return json(res, 400, { ok: false, error: `Bilinmeyen Stable Audio modeli: ${model}` });
+      }
+      if (isStableAudio && !isSnapshotInstalled(model)) {
+        isAudioGenerating = false;
+        return json(res, 404, { ok: false, error: `${SNAPSHOT_MODELS[model].label} indirilmemiş. Model Merkezi > Müzik bölümünden indirin (Hugging Face lisans onayı ve HF Token gerekir).` });
       }
       if (mode === "music" && /musicgen-(medium|large)/.test(model)) {
         const ckpt = path.join(MUSIC_MODELS, model.includes("large") ? "musicgen-large.safetensors" : "musicgen-medium.safetensors");
@@ -8670,7 +8746,9 @@ const server = http.createServer(async (req, res) => {
       audioGenerationProgress = {
         active: true,
         mode: mode,
-        phase: mode === "sfx" ? `${model.includes("large") ? "AudioLDM 2 Large" : (model.includes("2") || model.includes("base")) ? "AudioLDM 2 Base" : "AudioLDM-S"} ses efekti hazirlaniyor...` : `Müzik sentezleniyor (${duration} sn)...`,
+        phase: isStableAudio
+          ? `${SNAPSHOT_MODELS[model].label} hazırlanıyor...`
+          : mode === "sfx" ? `${model.includes("large") ? "AudioLDM 2 Large" : (model.includes("2") || model.includes("base")) ? "AudioLDM 2 Base" : "AudioLDM-S"} ses efekti hazirlaniyor...` : `Müzik sentezleniyor (${duration} sn)...`,
         progress: 6,
         step: 0,
         totalSteps: duration,
@@ -8678,8 +8756,10 @@ const server = http.createServer(async (req, res) => {
         startedAt: Date.now()
       };
 
-      const pythonBin = requirePythonFor(mode === "sfx" ? "sfx" : "music", mode === "sfx" ? "AudioLDM ses efekti" : "MusicGen müzik üretimi");
-      const workerScript = path.join(ROOT, "scripts", "workers", "music-worker.py");
+      const pythonBin = isStableAudio
+        ? requirePythonFor("stable-audio", SNAPSHOT_MODELS[model].label)
+        : requirePythonFor(mode === "sfx" ? "sfx" : "music", mode === "sfx" ? "AudioLDM ses efekti" : "MusicGen müzik üretimi");
+      const workerScript = path.join(ROOT, "scripts", "workers", isStableAudio ? "stable-audio-worker.py" : "music-worker.py");
 
       const payload = {
         prompt: body.prompt,
@@ -8765,6 +8845,7 @@ const server = http.createServer(async (req, res) => {
         model: resolvedModel,
         filename: wavFilename,
         sampleRate: workerResult.sampleRate || 32000,
+        channels: workerResult.channels || 1,
         genDuration: workerResult.genDuration,
         seed: workerResult.seed,
         isSfx: workerResult.isSfx || false,
@@ -10210,8 +10291,8 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
     if (!body) return;
     const modelId = String(body.modelId || body.model_id || body.model || "");
     const catalogModel = SPEECH_MODEL_CATALOG.find((model) => model.id === modelId || model.filename === modelId);
-    if (catalogModel && catalogModel.engine === "duyu") {
-      return json(res, 200, enqueueModelDownload({ type: "snapshot", snapshotId: "duyu-small", name: catalogModel.name, kind: "speech" }));
+    if (catalogModel && PYTHON_SPEECH_ENGINES[catalogModel.engine]) {
+      return json(res, 200, enqueueModelDownload({ type: "snapshot", snapshotId: PYTHON_SPEECH_ENGINES[catalogModel.engine].folder, name: catalogModel.name, kind: "speech" }));
     }
     const url = body.url ? String(body.url) : (catalogModel ? `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/${catalogModel.filename}` : "");
     const filename = path.basename(String(body.filename || catalogModel?.filename || ""));
@@ -10244,12 +10325,14 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
     if (!body) return;
     const filename = path.basename(String(body.filename || ""));
     const modelPath = path.join(SPEECH_MODELS, filename);
-    if (!filename || !pathInside(modelPath, SPEECH_MODELS)) {
+    if (!filename || filename === "." || filename === ".." || !pathInside(modelPath, SPEECH_MODELS)) {
       return json(res, 400, { ok: false, error: "Invalid filename" });
     }
     if (speechSettings.model === filename) await stopSpeech();
     try {
-      fs.unlinkSync(modelPath);
+      // Duyu and Seda are model folders, whisper.cpp models single .bin files.
+      if (fs.statSync(modelPath).isDirectory()) fs.rmSync(modelPath, { recursive: true, force: true });
+      else fs.unlinkSync(modelPath);
       return json(res, 200, { ok: true });
     } catch (err) {
       return json(res, err.code === "ENOENT" ? 404 : 500, { ok: false, error: err.code === "ENOENT" ? "Speech model not found" : err.message });
@@ -11813,8 +11896,10 @@ async function getLlmfitRecommendations(useCase = "chat", limit = 10) {
     
     const openvinoModel = findOpenVinoModel(filename);
     const safeFilename = path.basename(filename);
+    // Folders are removed recursively below, so "." and ".." must never reach path.join.
+    if (!safeFilename || safeFilename === "." || safeFilename === "..") return json(res, 400, { error: "Invalid filename" });
     const modelPath = path.join(MODELS, safeFilename);
-    
+
     try {
       if (openvinoModel?.installed && openvinoModel.path && pathInside(openvinoModel.path, OPENVINO_MODELS)) {
         fs.rmSync(openvinoModel.path, { recursive: true, force: true });
@@ -11826,11 +11911,12 @@ async function getLlmfitRecommendations(useCase = "chat", limit = 10) {
         console.log(`  [api] Deleted model file: ${safeFilename}`);
         return json(res, 200, { ok: true, message: `Deleted ${safeFilename}` });
       } else if (fs.existsSync(path.join(VIDEO_MODELS, safeFilename))) {
-        fs.unlinkSync(path.join(VIDEO_MODELS, safeFilename));
+        // Snapshot models (Wan, SVD, MusicGen, AudioLDM, Stable Audio) are folders.
+        fs.rmSync(path.join(VIDEO_MODELS, safeFilename), { recursive: true, force: true });
         console.log(`  [api] Deleted video model file: ${safeFilename}`);
         return json(res, 200, { ok: true, message: `Deleted ${safeFilename}` });
       } else if (fs.existsSync(path.join(MUSIC_MODELS, safeFilename))) {
-        fs.unlinkSync(path.join(MUSIC_MODELS, safeFilename));
+        fs.rmSync(path.join(MUSIC_MODELS, safeFilename), { recursive: true, force: true });
         console.log(`  [api] Deleted music model file: ${safeFilename}`);
         return json(res, 200, { ok: true, message: `Deleted ${safeFilename}` });
       } else if (fs.existsSync(path.join(RVC_MODELS, safeFilename))) {
