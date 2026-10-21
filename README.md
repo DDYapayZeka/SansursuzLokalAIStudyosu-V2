@@ -35,7 +35,6 @@
 * [Sorun Giderme ve Sıkça Sorulan Sorular (SSS)](#sss)
 * [Kaynaktan Derleme (Geliştiriciler İçin)](#derleme)
 * [Lisans](#lisans)
-* [Teşekkür ve Atıf](#tesekkur)
 * [İletişim ve Topluluk](#iletisim)
 
 ---
@@ -324,15 +323,6 @@ cp bin/sd* /yol/SansursuzLokalAIStudyosu-V2/app/backend/linux/vulkan/sd-vulkan
 ## <a id="lisans"></a> 📜 Lisans
 
 Bu proje **[MIT Lisansı](LICENSE)** ile lisanslanmıştır. Projede kullanılan `stable-diffusion.cpp` ve `llama.cpp` projeleri kendi açık kaynak lisanslarına (MIT) sahiptir. İndirdiğiniz yapay zeka modelleri ise ilgili modellerin kendi açık kaynak kullanım koşullarına tabidir.
-
----
-
-## <a id="tesekkur"></a> 🤝 Teşekkür ve Atıf
-
-Bu proje, [techjarves](https://github.com/techjarves) tarafından geliştirilen özgün **[Uncensored-Local-Studio](https://github.com/techjarves/Uncensored-Local-Studio)** projesi temel alınarak yeniden yapılandırılmış (refactored), Türkçeleştirilmiş ve yeni özelliklerle zenginleştirilmiş bir sürümdür. Açık kaynak dünyasına sağladığı değerli katkılardan dolayı **techjarves**'e teşekkür ederiz.
-
-* **Özgün Proje:** [techjarves/Uncensored-Local-Studio](https://github.com/techjarves/Uncensored-Local-Studio)
-* **Bu Sürüm:** Türkçe arayüz yerelleştirmesi, model indirme optimizasyonları, tek tıkla model yönetim iyileştirmeleri ve ek platform desteklerini içerir.
 
 ---
 
