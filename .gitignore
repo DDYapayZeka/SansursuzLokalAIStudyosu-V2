@@ -1,0 +1,56 @@
+# Downloaded AI models
+app/models/
+app/openvino-models/
+app/llm-models/
+app/speech-models/
+app/tts-models/
+
+# Downloaded portable runtimes/backends
+app/backend/
+app/llm-backend/
+app/speech-backend/
+app/tts-runtime/
+app/tools/
+
+# Generated files
+app/config/
+app/cache/
+app/outputs/
+app/chat-history/
+app/transcriptions/
+app/tts-outputs/
+app/tts-cache/
+app/audio-outputs/
+app/music-models/
+app/video-models/
+app/video-outputs/
+app/rvc-models/
+
+# Personal voice recordings used for voice cloning (never publish)
+app/reference-voices/
+
+# Dependencies and platform-specific copies
+**/node_modules/
+**/node_modules_*/
+**/node_modules_windows/
+**/node_modules_linux/
+**/node_modules_mac/
+**/.active_modules_os
+
+# Partial downloads and archives
+*.part
+*.tmp
+app/tools/*.zip
+app/tools/*.tar.gz
+app/tools/*.tar.xz
+
+# Logs and caches
+*.log
+__pycache__/
+*.pyc
+
+# OS/editor files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

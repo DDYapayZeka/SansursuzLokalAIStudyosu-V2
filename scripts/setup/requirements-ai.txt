@@ -1,0 +1,36 @@
+# Python packages for the Turkish TTS, Duyu speech recognition, music / sound effect and video workers.
+# Installed by scripts/setup/setup-python.ps1 into app/tools/python-env together with PyTorch
+# (torch, torchvision, torchaudio), whose CUDA build is chosen from the installed NVIDIA driver.
+
+# Diffusion / transformer runtimes (MusicGen, AudioLDM, AnimateDiff, Wan 2.1, SVD-XT)
+transformers
+diffusers
+accelerate
+huggingface_hub
+safetensors
+einops
+ftfy
+
+# Audio and media helpers
+soundfile
+librosa
+scipy
+numpy
+pillow
+imageio
+imageio-ffmpeg
+httpx
+
+# Duyu-small speech recognition (int8 ONNX)
+onnxruntime
+sentencepiece
+
+# Turkish text-to-speech engines
+antalia-mini
+ema-lightning==1.1.2
+# Ahenk Cep's model code imports trnorm (Turkish text normalization, Apache-2.0). It is not on PyPI,
+# so it is installed from a pinned source archive (no git needed).
+trnorm @ https://github.com/ozguradmin/ahenk-turkish-tts/archive/14ec3660fffb3086530dc6dc65d4cfbac901887f.zip
+supertonic
+omnivoice
+faster-whisper

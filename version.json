@@ -1,0 +1,9 @@
+{
+  "version": "2.0.0",
+  "buildNumber": 200,
+  "channel": "stable",
+  "releasedAt": "2026-10-21",
+  "repo": "DDYapayZeka/SansursuzLokalAIStudyosu-V2",
+  "branch": "main",
+  "notes": "v2.0.0 Derine Dalıyoruz: Yapay Zeka Özel Sürümü - Türkçe Ses/TTS (Antalia, Ahenk, EMA, Supertonic, OmniVoice), Duyu ses tanıma, Harfiyen altyazı, Müzik ve Ses Efekti, Video Stüdyosu, Hibrit Bulut API, TR/EN Çift Dil ve Tek Tıkla Güncelleme Sistemi."
+}
