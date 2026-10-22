@@ -282,7 +282,10 @@ function Settings({
         } else {
           await showAlert?.({
             title: uiText("Güncelleme Tamamlandı", "Update Complete"),
-            message: uiText(`${res.message || "Yeni sürüm başarıyla kuruldu."} Arayüz şimdi yenilenecek.`, `${res.message || "The new version was installed."} The interface will now reload.`),
+            message: uiText(
+              `${res.message || "Yeni sürüm başarıyla kuruldu. Uygulamayı kapatıp yeniden başlatın."} Arayüz şimdi yenilenecek.`,
+              `The update was installed (${res.updatedVersion || ""}, ${res.updatedFilesCount || 0} files). Close the app and start it again (windows.bat on Windows) so every new feature is enabled. The interface will now reload.`
+            ),
           });
           window.location.reload();
         }

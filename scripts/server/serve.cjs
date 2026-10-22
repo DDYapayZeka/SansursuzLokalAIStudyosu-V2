@@ -9953,6 +9953,11 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
         "app/dist"
       ];
 
+      // Built assets have hashed names, so old bundles would pile up next to the new ones.
+      if (fs.existsSync(path.join(unpackedRoot, "app", "dist", "index.html"))) {
+        fs.rmSync(path.join(ROOT, "app", "dist", "assets"), { recursive: true, force: true });
+      }
+
       for (const relTarget of safeOverlayTargets) {
         copyRecursiveSafe(path.join(unpackedRoot, relTarget), path.join(ROOT, relTarget));
       }
@@ -9990,7 +9995,9 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
         updatedVersion: incomingVersion,
         updatedFilesCount,
         distRebuilt,
-        message: `Güncelleme başarıyla tamamlandı (${incomingVersion}). ${updatedFilesCount} dosya güncellendi.`
+        restartRequired: true,
+        // The running server keeps the old code, and new Python packages are installed by windows.bat on launch.
+        message: `Güncelleme başarıyla tamamlandı (${incomingVersion}). ${updatedFilesCount} dosya güncellendi. Yeni özelliklerin tamamen etkinleşmesi için uygulamayı kapatıp yeniden başlatın (Windows'ta windows.bat).`
       });
     } catch (err) {
       console.error("  [updater] Guncelleme hatasi:", err);
