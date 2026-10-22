@@ -1933,13 +1933,13 @@ function Settings({
               {updateCheckedAt || "Henüz yapılmadı"}
             </div>
             <div style={{ fontSize: "0.75rem", opacity: 0.8, marginTop: "2px" }}>
-              {updateInfo ? (updateInfo.updateAvailable ? "Yeni güncelleme var!" : "Sistem güncel") : "Denetlemek için butona basın"}
+              {updateInfo ? (!updateInfo.ok ? "Denetlenemedi" : updateInfo.updateAvailable ? "Yeni güncelleme var!" : "Sistem güncel") : "Denetlemek için butona basın"}
             </div>
           </div>
         </div>
 
         {/* Güncelleme Durum Kutusu */}
-        {updateInfo && (
+        {updateInfo?.ok && (
           <div style={{
             padding: "14px 16px",
             borderRadius: "12px",

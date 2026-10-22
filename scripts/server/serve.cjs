@@ -9765,6 +9765,8 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
     const localMeta = readLocalVersionMeta();
     const headers = { "User-Agent": "DDYZ-Local-Studio/2.0", "Accept": "application/vnd.github.v3+json" };
     let reachable = false;
+    // A private, renamed or deleted repo answers 404 everywhere; that must not read as "up to date".
+    let repoFound = false;
     let remoteVersion = localMeta.version;
     let remoteBuildNumber = localMeta.buildNumber;
     let remoteNotes = "";
@@ -9778,6 +9780,7 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
       const rawRes = await fetch(rawUrl, { headers, signal: AbortSignal.timeout(7000) });
       if (rawRes.ok) {
         reachable = true;
+        repoFound = true;
         const remoteJson = await rawRes.json();
         if (remoteJson && remoteJson.version) {
           const v = "v" + String(remoteJson.version).replace(/^v/i, "");
@@ -9803,6 +9806,7 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
       });
       if (ghRes.ok) {
         reachable = true;
+        repoFound = true;
         const rel = await ghRes.json();
         if (rel && rel.tag_name) {
           const relVer = "v" + String(rel.tag_name).replace(/^v/i, "");
@@ -9824,6 +9828,7 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
       });
       if (commitRes.ok) {
         reachable = true;
+        repoFound = true;
         const commitData = await commitRes.json();
         if (commitData && commitData.sha) {
           remoteCommitSha = String(commitData.sha).slice(0, 7);
@@ -9840,6 +9845,16 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
         latestVersion: localMeta.version,
         updateAvailable: false,
         error: "GitHub güncelleme sunucusuna erişilemedi. Lütfen internet bağlantınızı kontrol edin."
+      });
+    }
+
+    if (!repoFound) {
+      return json(res, 200, {
+        ok: false,
+        currentVersion: localMeta.version,
+        latestVersion: localMeta.version,
+        updateAvailable: false,
+        error: `GitHub deposundaki sürüm bilgisi okunamadı (${localMeta.repo}). Depo gizli ya da taşınmış olabilir veya GitHub istek sınırı dolmuş olabilir; biraz sonra tekrar deneyin.`
       });
     }
 
