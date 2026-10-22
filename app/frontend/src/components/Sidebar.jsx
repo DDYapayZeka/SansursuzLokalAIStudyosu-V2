@@ -62,7 +62,7 @@ function Sidebar({
             boxShadow: "0 4px 16px rgba(139, 92, 246, 0.35), inset 0 1px 1px rgba(255,255,255,0.6)",
             flexShrink: 0
           }}>
-            <img className="sidebar-logo-icon" src="/logo.png" alt="DD:YZ logosu" style={{ width: "100%", height: "100%", borderRadius: "10px", objectFit: "cover" }} />
+            <img className="sidebar-logo-icon" src="/logo.png?v=2" alt="DD:YZ logosu" style={{ width: "100%", height: "100%", borderRadius: "10px", objectFit: "cover" }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
             <span className="sidebar-logo-text" style={{ fontWeight: "800", fontSize: "15px", letterSpacing: "-0.4px", whiteSpace: "nowrap" }}>

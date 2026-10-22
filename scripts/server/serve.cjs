@@ -11958,9 +11958,12 @@ async function getLlmfitRecommendations(useCase = "chat", limit = 10) {
 
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end("Not found"); return; }
+    // Only Vite's content-hashed bundles are safe to cache forever; fixed names like logo.png must revalidate.
     const cacheControl = ext === ".html"
       ? "no-cache, no-store, must-revalidate"
-      : "public, max-age=31536000, immutable";
+      : requestPath.startsWith("/assets/")
+        ? "public, max-age=31536000, immutable"
+        : "no-cache";
     res.writeHead(200, {
       "Content-Type": mime,
       "Cache-Control": cacheControl,

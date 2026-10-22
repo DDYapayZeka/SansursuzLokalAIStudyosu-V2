@@ -1844,7 +1844,7 @@ function Generator({
                 <div className="apple-glass-hero-overlay" />
                 <div className="apple-glass-hero-card">
                   <div className="apple-glass-emblem-wrap">
-                    <img src="/logo.png" alt="Crystal Logo" className="apple-glass-emblem" />
+                    <img src="/logo.png?v=2" alt="Crystal Logo" className="apple-glass-emblem" />
                     <div className="apple-glass-emblem-sheen" />
                   </div>
                   <div className="apple-glass-hero-badge">
