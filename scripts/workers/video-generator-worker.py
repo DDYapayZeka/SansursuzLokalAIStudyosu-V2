@@ -213,6 +213,12 @@ def run_wan(payload, out_path, rng_seed, tier="1.3b"):
     if not has_local_pipe:
         # Never silently switch to another engine: the user asked for Wan.
         raise RuntimeError(f"Wan 2.1 {tier.upper()} Diffusers folder (model_index.json) not found in {target_dir}.")
+    missing = [sub for sub in ("vae", "transformer", "text_encoder")
+               if not os.path.exists(os.path.join(target_dir, sub, "config.json"))
+               or not any(f.endswith(".safetensors") for f in os.listdir(os.path.join(target_dir, sub)))]
+    if missing:
+        raise RuntimeError(f"Wan 2.1 {tier.upper()} download is incomplete (missing: {', '.join(missing)}). "
+                           "Restart the download from Model Center > Video; finished files are skipped.")
 
     progress("loading", 0, 0)
     t0 = time.time()

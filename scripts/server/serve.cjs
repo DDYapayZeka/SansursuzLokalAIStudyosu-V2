@@ -6898,8 +6898,42 @@ function isSnapshotInstalled(snapshotId) {
   const base = path.join(spec.dir, spec.folder);
   const marker = path.join(base, ".download-complete");
   if (fs.existsSync(marker)) return true;
-  // Folders created by older versions / manual copies: accept a complete diffusers index.
-  return fs.existsSync(path.join(base, "model_index.json")) || (snapshotId === "musicgen-small" && fs.existsSync(path.join(base, "model.safetensors")));
+  // Folders created by older versions / manual copies: accept a diffusers folder whose components are all present.
+  return isDiffusersFolderComplete(base) || (snapshotId === "musicgen-small" && fs.existsSync(path.join(base, "model.safetensors")));
+}
+
+// model_index.json alone is not enough: an interrupted snapshot download leaves it behind while
+// component folders (e.g. vae/, transformer weights) are missing, and diffusers then fails with
+// "no file named config.json". Every listed component must have its config and, for weighted
+// modules, all of its safetensors shards.
+function isDiffusersFolderComplete(base) {
+  let index;
+  try { index = JSON.parse(fs.readFileSync(path.join(base, "model_index.json"), "utf8")); } catch (_) { return false; }
+  for (const [name, value] of Object.entries(index)) {
+    if (name.startsWith("_") || !Array.isArray(value) || value[0] == null) continue;
+    const dir = path.join(base, name);
+    let files;
+    try { files = fs.readdirSync(dir); } catch (_) { return false; }
+    if (name === "scheduler") {
+      if (!files.includes("scheduler_config.json")) return false;
+      continue;
+    }
+    if (/tokenizer|feature_extractor|processor/i.test(name)) {
+      if (files.length === 0) return false;
+      continue;
+    }
+    if (!files.includes("config.json")) return false;
+    const shardIndex = files.find((file) => /\.safetensors\.index\.json$/i.test(file));
+    if (shardIndex) {
+      try {
+        const shards = new Set(Object.values(JSON.parse(fs.readFileSync(path.join(dir, shardIndex), "utf8")).weight_map || {}));
+        for (const shard of shards) if (!files.includes(shard)) return false;
+      } catch (_) { return false; }
+    } else if (!files.some((file) => /\.(safetensors|bin)$/i.test(file))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 async function listHuggingFaceRepoFiles(repoId, include) {
@@ -6931,6 +6965,8 @@ function startSnapshotDownload(snapshotId) {
   (async () => {
     const files = await listHuggingFaceRepoFiles(spec.repoId, spec.include);
     if (files.length === 0) throw new Error(`${spec.repoId} deposunda indirilecek dosya bulunamadı.`);
+    // model_index.json last, so an interrupted download never looks like an installed pipeline.
+    files.sort((a, b) => (a.path === "model_index.json") - (b.path === "model_index.json"));
     const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
     downloadState.totalBytes = totalBytes;
     let doneBytes = 0;
@@ -9126,7 +9162,7 @@ function isAnimateDiffReady() {
 }
 
 function isWan13bReady() {
-  return fs.existsSync(path.join(VIDEO_MODELS, "wan21-t2v-1.3b", "model_index.json"));
+  return isSnapshotInstalled("wan21-t2v-1.3b");
 }
 
 function isSvdReady() {
@@ -9143,7 +9179,7 @@ function getLocalVideoEngineIssue(engine, mode, hasImage) {
   }
   if (id === "wan21-1.3b") {
     if (mode === "i2v" || hasImage) return { status: 400, error: "Wan 2.1 T2V 1.3B yalnızca metinden video üretir. Görselden video için SVD-XT 1.1 seçin." };
-    return isWan13bReady() ? null : { status: 404, error: "Wan 2.1 T2V 1.3B Diffusers klasörü (app/video-models/wan21-t2v-1.3b) bulunamadı. Model Merkezi > Video'dan indirin." };
+    return isWan13bReady() ? null : { status: 404, error: "Wan 2.1 T2V 1.3B Diffusers klasörü (app/video-models/wan21-t2v-1.3b) bulunamadı veya indirme yarım kalmış (vae/transformer eksik). Model Merkezi > Video'dan indirmeyi yeniden başlatın; tamamlanmış dosyalar atlanır." };
   }
   if (id === "svd-xt") {
     if (!hasImage) return { status: 400, error: "SVD-XT 1.1 görselden video (I2V) modelidir; bir başlangıç görseli yükleyin." };
