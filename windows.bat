@@ -7,6 +7,8 @@ cd /d "%~dp0"
 set APP=%~dp0app
 set NODE=%APP%\tools\node-win\node.exe
 set NPM=%APP%\tools\node-win\npm.cmd
+:: Keep in sync with $nodeVersion in scripts\setup\setup.ps1 (October 2026 Node.js security release).
+set REQUIRED_NODE=v22.23.4
 set DIST=%APP%\dist\index.html
 set SETUP=%~dp0scripts\setup\setup.ps1
 set CUDA_BACKEND=%APP%\backend\win\cuda\sd-cuda.exe
@@ -32,6 +34,12 @@ if not exist "%NODE%" (
 )
 if not exist "%NPM%" (
     set SETUP_REASON=Tasinabilir npm eksik.
+    goto :run_setup
+)
+set NODE_VER=
+for /f "delims=" %%v in ('""%NODE%" --version" 2^>nul') do set NODE_VER=%%v
+if not "!NODE_VER!"=="%REQUIRED_NODE%" (
+    set SETUP_REASON=Tasinabilir Node.js !NODE_VER! eski, guvenlik guncellemesi: %REQUIRED_NODE%.
     goto :run_setup
 )
 if not exist "%DIST%" (

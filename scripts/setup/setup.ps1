@@ -202,21 +202,32 @@ $steps = 9
 # -- Step 1: Portable Node.js --------------------------------------------------
 Print-Step 1 $steps "Setting up portable Node.js (app/tools/node-win/)"
 
+# Keep in sync with REQUIRED_NODE in windows.bat and NODE_VERSION in setup.sh.
+# 22.23.4 = October 2026 security release (TLS/DNS/Brotli CVEs).
+$nodeVersion = "22.23.4"
+# Left behind when the previous update's old runtime was still running.
+Remove-Item (Join-Path $toolsDir "node-win.old") -Recurse -Force -ErrorAction SilentlyContinue
 $nodeReady = $false
+$nodeOutdated = $false
 if ((Test-Path $nodeExe) -and (Test-Path $npmCmd)) {
     try {
         $v = & $nodeExe --version
         # Test if npm is functional (doesn't throw parsing/unexpected token errors)
         $npmTest = & $nodeExe (Join-Path $nodeDir "node_modules\npm\bin\npm-cli.js") --version 2>&1
         if ($LASTEXITCODE -eq 0 -and $npmTest -match "^\d+\.\d+\.\d+") {
-            $nodeReady = $true
-            Print-OK "Portable Node.js already ready: $v"
+            if ("$v".Trim() -eq "v$nodeVersion") {
+                $nodeReady = $true
+                Print-OK "Portable Node.js already ready: $v"
+            } else {
+                $nodeOutdated = $true
+                Print-Warn "Portable Node.js $v is outdated; updating to v$nodeVersion (security fixes)..."
+            }
         }
     } catch {}
 }
 
 if (-not $nodeReady) {
-    if (Test-Path $nodeDir) {
+    if ((Test-Path $nodeDir) -and -not $nodeOutdated) {
         Print-Warn "Portable Node.js installation is corrupted or incomplete. Cleaning up..."
         Remove-Item $nodeDir -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -225,19 +236,37 @@ if (-not $nodeReady) {
     New-Item -ItemType Directory -Force -Path $toolsDir | Out-Null
 
     $ok = Invoke-RichDownload `
-        -Url  "https://nodejs.org/dist/v22.12.0/node-v22.12.0-win-x64.zip" `
+        -Url  "https://nodejs.org/dist/v$nodeVersion/node-v$nodeVersion-win-x64.zip" `
         -Dest $nodeZip `
-        -Label "Node.js v22.12.0 LTS (Portable ZIP)"
+        -Label "Node.js v$nodeVersion LTS (Portable ZIP)"
 
-    if (-not $ok) { Print-Fail "Cannot download Node.js."; Read-Host; exit 1 }
+    if (-not $ok -and $nodeOutdated) {
+        # A working older Node still runs the app; retry the update on the next launch.
+        Print-Warn "Could not download Node.js v$nodeVersion. Keeping $v for now."
+        $nodeReady = $true
+    } elseif (-not $ok) { Print-Fail "Cannot download Node.js."; Read-Host; exit 1 }
+}
 
+if (-not $nodeReady) {
+    Get-ChildItem $toolsDir -Directory | Where-Object { $_.Name -like "node-v*" } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     Expand-WithProgress -ZipPath $nodeZip -Destination $toolsDir -Label "Node.js"
     Remove-Item $nodeZip -Force
 
     $extracted = Get-ChildItem $toolsDir -Directory | Where-Object { $_.Name -like "node-v*" } | Select-Object -First 1
     if ($extracted) {
-        if (Test-Path $nodeDir) { Remove-Item $nodeDir -Recurse -Force }
-        Rename-Item $extracted.FullName "node-win"
+        # Rename instead of delete: a directory rename fails as a whole while node.exe is locked,
+        # whereas a recursive delete could leave a half-removed runtime behind.
+        $oldNodeDir = Join-Path $toolsDir "node-win.old"
+        Remove-Item $oldNodeDir -Recurse -Force -ErrorAction SilentlyContinue
+        if (Test-Path $nodeDir) { Rename-Item $nodeDir "node-win.old" -ErrorAction SilentlyContinue }
+        if (Test-Path $nodeDir) {
+            # node.exe is locked by a still-running app window: keep the old runtime this time.
+            Print-Warn "app/tools/node-win is in use; close all app windows and restart to finish the Node.js update."
+            Remove-Item $extracted.FullName -Recurse -Force -ErrorAction SilentlyContinue
+        } else {
+            Rename-Item $extracted.FullName "node-win"
+            Remove-Item $oldNodeDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 
     # Pause briefly to allow USB drive writes to flush

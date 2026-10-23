@@ -47,7 +47,8 @@ fi
 SD_RELEASE="master-685-19bdfe2"
 SD_SHORT_HASH="${SD_RELEASE##*-}"
 SD_BASE_URL="https://github.com/leejet/stable-diffusion.cpp/releases/download/$SD_RELEASE"
-NODE_VERSION="22.12.0"
+# 22.23.4 = Ekim 2026 guvenlik surumu (TLS/DNS/Brotli CVE'leri). mac.sh ve linux.sh ayni surumu bekler.
+NODE_VERSION="22.23.4"
 
 if [[ "$PLATFORM" == "Darwin" ]]; then
   if [[ "$ARCH" == "arm64" ]]; then
@@ -364,13 +365,19 @@ if [[ -x "$NODE_BIN" ]]; then
   INSTALLED_NODE_ARCH="$($NODE_BIN -p "process.arch" 2>/dev/null || true)"
 fi
 
-if [[ -x "$NODE_BIN" && -x "$NPM_BIN" && "$INSTALLED_NODE_ARCH" == "$EXPECTED_NODE_ARCH" ]]; then
-  VERSION=$("$NODE_BIN" --version)
-  print_ok "Tasinabilir Node.js zaten hazir: $VERSION"
+INSTALLED_NODE_VERSION=""
+if [[ -x "$NODE_BIN" ]]; then
+  INSTALLED_NODE_VERSION="$("$NODE_BIN" --version 2>/dev/null || true)"
+fi
+
+if [[ -x "$NODE_BIN" && -x "$NPM_BIN" && "$INSTALLED_NODE_ARCH" == "$EXPECTED_NODE_ARCH" && "$INSTALLED_NODE_VERSION" == "v$NODE_VERSION" ]]; then
+  print_ok "Tasinabilir Node.js zaten hazir: $INSTALLED_NODE_VERSION"
 else
   if [[ -n "$INSTALLED_NODE_ARCH" && "$INSTALLED_NODE_ARCH" != "$EXPECTED_NODE_ARCH" ]]; then
     print_warn "Tasinabilir Node.js $INSTALLED_NODE_ARCH, bu donanim icin $EXPECTED_NODE_ARCH ile degistiriliyor."
     rm -rf "$NODE_DIR"
+  elif [[ -n "$INSTALLED_NODE_VERSION" && "$INSTALLED_NODE_VERSION" != "v$NODE_VERSION" ]]; then
+    print_warn "Tasinabilir Node.js $INSTALLED_NODE_VERSION eski; guvenlik yamalari icin v$NODE_VERSION surumune guncelleniyor."
   fi
   mkdir -p "$TOOLS_DIR"
   NODE_TAR_PATH="$TOOLS_DIR/$NODE_TARBALL"

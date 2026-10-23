@@ -158,6 +158,12 @@ if [[ ! -x "$NODE_BIN" ]]; then
   SETUP_REASON="Tasinabilir Node.js (Linux) eksik."
 fi
 
+# Keep in sync with NODE_VERSION in scripts/setup/setup.sh (October 2026 Node.js security release).
+REQUIRED_NODE="v22.23.4"
+if [[ -x "$NODE_BIN" && "$("$NODE_BIN" --version 2>/dev/null)" != "$REQUIRED_NODE" ]]; then
+  SETUP_REASON="Tasinabilir Node.js eski; $REQUIRED_NODE guvenlik guncellemesi kuruluyor."
+fi
+
 if [[ ! -f "$DIST_INDEX" ]]; then
   SETUP_REASON="On yuz derlemesi eksik."
 fi
