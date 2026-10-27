@@ -15,7 +15,13 @@
 </p>
 
 <p align="center">
-  <a href="https://youtu.be/iykgwvycFio">📺 Kurulum ve Tanıtım Videosunu İzleyin (DD:YZ Kanalı)</a>
+  <a href="https://youtu.be/jqFI4pxobBY">
+    <img src="https://img.shields.io/badge/YouTube-Tan%C4%B1t%C4%B1m%20ve%20Kurulum%20Videosunu%20%C4%B0zle-red?style=for-the-badge&logo=youtube&logoColor=white" alt="Tanıtım ve Kurulum Videosunu İzle" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/jqFI4pxobBY">📺 Uygulamanın tanıtımını ve kurulumunu adım adım anlatan videoyu izleyin (DD:YZ Kanalı)</a>
 </p>
 
 ---
@@ -150,6 +156,8 @@ SansursuzLokalAIStudyosu-V2/
 ---
 
 ## <a id="baslarken"></a> 🚀 Başlarken (Kurulum ve Çalıştırma)
+
+> 📺 **Videolu Anlatım:** Kurulumu ve kullanımı adım adım görmek için [tanıtım ve kurulum videosunu](https://youtu.be/jqFI4pxobBY) izleyebilirsiniz.
 
 Bilgisayarınızda modern bir internet tarayıcısının (Chrome, Edge, Brave, Firefox vb.) kurulu olduğundan emin olun. İşletim sisteminize uygun adımları takip edin:
 
@@ -331,6 +339,7 @@ Bu proje **[MIT Lisansı](LICENSE)** ile lisanslanmıştır. Projede kullanılan
 
 ## <a id="iletisim"></a> 📢 İletişim ve Topluluk
 
+* 🎬 **Tanıtım ve Kurulum Videosu:** [youtu.be/jqFI4pxobBY](https://youtu.be/jqFI4pxobBY)
 * 📺 **YouTube Kanalımız:** [Derine Dalıyoruz: Yapay Zeka (DD:YZ)](https://www.youtube.com/@derinedaliyoruzyapayzeka)
 * 📧 **E-posta İletişim:** [divingdeep.ai.tr@gmail.com](mailto:divingdeep.ai.tr@gmail.com)
 
