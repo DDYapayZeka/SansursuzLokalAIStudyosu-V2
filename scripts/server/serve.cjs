@@ -5572,7 +5572,7 @@ async function startLlm(settings = {}) {
           backend: backend.mode,
           binary: path.basename(backend.path),
           profile: profile.name,
-          error: message.slice(-500),
+          error: message.slice(-1200),
         });
         console.warn(`  [llm] Load failed on ${backend.mode} (${profile.name}): ${message}`);
         await killLlm();
@@ -5815,7 +5815,7 @@ async function startLlmWithBackend(settings = {}, backend) {
     }
     llmReady = false;
     llmProc = null;
-    if (code !== 0 && code !== null && !llmError) llmError = `llama.cpp ile cikti kodu ${code}`;
+    if (code !== 0 && code !== null && !llmError) llmError = `llama.cpp ${describeBackendExitCode(code, backend.path)}`;
     console.log("  [llm] ile cikti kodu", code, `(process ${procSeq})`);
   });
 
@@ -7510,8 +7510,16 @@ function describeLinuxRuntimeLinkerError(rawError) {
   return `${raw}\n\nThe selected model is not the problem. The Linux backend binary cannot start because this OS is missing ${requirementText}. The bundled Linux backends are built for Ubuntu 24.04-era systems. Use Ubuntu 24.04+, Fedora 40+, another glibc 2.38+ distro, or build stable-diffusion.cpp from source on this machine.`;
 }
 
+const VC_REDIST_HINT = "Most often this is the Microsoft Visual C++ 2015-2022 x64 runtime (VC_redist.x64.exe). Close the app window and start windows.bat again so it is installed automatically, or install it from https://aka.ms/vs/17/release/vc_redist.x64.exe and restart the app.";
+
 function describeBackendExitCode(code, backendPath) {
   const numericCode = Number(code);
+  // 0xC0000139 (entry point not found) and 0xC0000005 (access violation in std::mutex) are what an
+  // outdated Visual C++ runtime produces with binaries built by VS 2022 17.10+.
+  if (osPlatform === "win32" && (numericCode === 3221225785 || numericCode === 3221225477)) {
+    const hex = numericCode === 3221225785 ? "0xC0000139" : "0xC0000005";
+    return `ile cikti kodu ${code} (${hex}).\n\nIf this happens as soon as the model starts loading, an outdated Visual C++ runtime is a common cause. ${VC_REDIST_HINT}`;
+  }
   if (osPlatform === "win32" && numericCode === 3221225781) {
     const backendName = path.basename(backendPath || BACKEND_PATH || "backend");
     const lowerBackend = backendName.toLowerCase();
@@ -7528,7 +7536,7 @@ function describeBackendExitCode(code, backendPath) {
         ? "Install or update the NVIDIA driver, then run setup again so the CUDA backend folder is repaired."
         : "Update the GPU driver, then run setup again so the backend folder is repaired.";
 
-    return `ile cikti kodu ${code} (0xC0000135: required DLL not found).\n\nWindows could not start ${backendName} because ${likelyMissing} is missing or not loadable. ${driverHint}\n\nIf you are using an AMD/Intel GPU, update the AMD/Intel graphics driver first. If the GPU is too old for the current Vulkan backend, switch the backend to CPU.`;
+    return `ile cikti kodu ${code} (0xC0000135: required DLL not found).\n\nWindows could not start ${backendName} because a required DLL is missing or not loadable. ${VC_REDIST_HINT}\n\nIf the Visual C++ runtime is already installed, ${likelyMissing} may be missing. ${driverHint}\n\nIf you are using an AMD/Intel GPU, update the AMD/Intel graphics driver first. If the GPU is too old for the current Vulkan backend, switch the backend to CPU.`;
   }
 
   return `ile cikti kodu ${code}`;

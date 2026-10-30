@@ -291,8 +291,8 @@ Projemiz **%100 bağımsız (self-contained)** mimaridedir; işletim sisteminize
 * **Başka Bir Cihazdan (Ağ Üzerinden) Erişim:**  
   Güvenlik için sunucu yalnızca `127.0.0.1` üzerinde dinler ve yabancı `Host` başlıklarını reddeder. Yerel ağdan erişmek için `LISTEN_HOST=0.0.0.0` ve `ALLOWED_HOSTS=192.168.1.20` (bilgisayarınızın IP'si) ortam değişkenleriyle başlatın.
 
-* **Windows `0xC0000135` (Eksik DLL) Hatası:**  
-  Sisteminizde gerekli ekran kartı sürücüsünün veya Vulkan/CUDA çalışma zamanının eksik olduğunu gösterir. Grafik sürücünüzü (NVIDIA Game Ready / AMD Adrenalin) güncelleyin.
+* **Model Yüklenirken "llama" Hatası / Windows `0xC0000135` (Eksik DLL) Hatası:**  
+  En sık sebep, sistemde **Microsoft Visual C++ 2015-2022 x64** çalışma zamanının eksik veya eski olmasıdır. `windows.bat` her açılışta bunu kontrol eder ve eksikse Microsoft'tan indirip kurar (Windows yönetici izni isterse "Evet" deyin). İzin verilmediyse veya kurulum başarısız olduysa paketi [vc_redist.x64.exe](https://aka.ms/vs/17/release/vc_redist.x64.exe) bağlantısından elle kurun, açık PowerShell / komut penceresini kapatıp `windows.bat` dosyasını yeniden başlatın. Sorun sürüyorsa grafik sürücünüzü (NVIDIA Game Ready / AMD Adrenalin / Intel) güncelleyin; eksik olan Vulkan/CUDA çalışma zamanı olabilir.
 
 ---
 

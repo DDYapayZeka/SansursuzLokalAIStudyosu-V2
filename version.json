@@ -1,9 +1,9 @@
 {
-  "version": "2.0.0",
-  "buildNumber": 205,
+  "version": "2.0.1",
+  "buildNumber": 206,
   "channel": "stable",
-  "releasedAt": "2026-10-23",
+  "releasedAt": "2026-10-30",
   "repo": "DDYapayZeka/SansursuzLokalAIStudyosu-V2",
   "branch": "main",
-  "notes": "v2.0.0 Derine Dalıyoruz: Yapay Zeka Özel Sürümü - Türkçe Ses/TTS (Antalia, Ahenk, EMA, Supertonic, OmniVoice), Duyu ve Seda ses tanıma, Harfiyen altyazı, Stable Audio 3 / MusicGen / AudioLDM ile Müzik ve Ses Efekti, Video Stüdyosu, Hibrit Bulut API, TR/EN Çift Dil ve Tek Tıkla Güncelleme Sistemi."
+  "notes": "v2.0.1 Hata Düzeltmesi: Model yüklenirken alınan \"llama hatası\" giderildi. windows.bat artık Microsoft Visual C++ çalışma zamanını her açılışta kontrol ediyor, eksik veya eskiyse otomatik indirip kuruyor. Motor açılamadığında hata mesajı doğrudan çözümü ve indirme bağlantısını gösteriyor."
 }

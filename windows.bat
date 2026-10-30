@@ -69,6 +69,9 @@ if not exist "%APP%\tools\python-env\.ddyz-ready.json" if not exist "%APP%\tools
 if exist "%APP%\tools\python-env\.ddyz-ready.json" (
     powershell -ExecutionPolicy Bypass -File "%~dp0scripts\setup\setup-python.ps1"
 )
+:: llama.cpp and the other native backends exit with 0xC0000135 without the Visual C++ runtime.
+:: Returns at once when it is installed; also covers installs made before this check existed.
+powershell -ExecutionPolicy Bypass -File "%~dp0scripts\setup\setup-vcredist.ps1"
 if exist "%CUDA_BACKEND%" goto :launch
 if exist "%VULKAN_BACKEND%" goto :launch
 set SETUP_REASON=Yuklu motor dosyasi bulunamadi.

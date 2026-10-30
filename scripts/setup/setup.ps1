@@ -293,6 +293,14 @@ if (-not $nodeReady) {
     Print-OK "Portable Node.js ready: $v"
 }
 
+# All native backends below need the Visual C++ runtime. A failure is reported but not fatal:
+# the backends can still be installed, they only start once the runtime is present.
+Print-Info "Checking Microsoft Visual C++ runtime"
+& powershell -ExecutionPolicy Bypass -File (Join-Path $scriptDir "setup-vcredist.ps1") -Force
+if ($LASTEXITCODE -eq 0) {
+    Print-OK "Microsoft Visual C++ runtime ready."
+}
+
 # -- Step 2: stable-diffusion.cpp GPU Backend (Dynamic Detection) --------------
 $hasNvidia = $false
 try {
