@@ -3,6 +3,7 @@ import { uiText } from "../i18n";
 import { Square, RefreshCw, Sun, Moon, Palette, Check, PanelLeftClose, PanelLeft, DownloadCloud, AlertTriangle, Globe } from "lucide-react";
 import { THEMES } from "../themes";
 import { checkAppUpdate, getDownloadProgress } from "../services/api";
+import { useAppVersion } from "../useAppVersion";
 
 const truncateModelName = (name) => {
   if (!name || typeof name !== "string") return "";
@@ -37,6 +38,7 @@ function TopStatusBar({
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState(null);
   const [downloadInfo, setDownloadInfo] = useState(null);
+  const appVersion = useAppVersion();
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -75,7 +77,7 @@ function TopStatusBar({
         } else {
           showAlert?.({
             title: uiText("Sistem Güncel", "System Up to Date"),
-            message: uiText(`Harika! En son kararlı sürümü (${data.currentVersion || "v2.0.0"}) kullanıyorsunuz.`, `Great! You are using the latest stable version (${data.currentVersion || "v2.0.0"}).`),
+            message: uiText(`Harika! En son kararlı sürümü (${data.currentVersion || appVersion}) kullanıyorsunuz.`, `Great! You are using the latest stable version (${data.currentVersion || appVersion}).`),
           });
         }
       } else {
@@ -367,10 +369,10 @@ function TopStatusBar({
           className={`top-bar-update-btn ${updateStatus?.updateAvailable ? "has-update" : ""}`}
           onClick={handleCheckUpdate}
           disabled={isCheckingUpdate}
-          title="Sürüm ve Güncellemeleri Denetle (v2.0.0)"
+          title={`Sürüm ve Güncellemeleri Denetle (${appVersion})`}
         >
           <RefreshCw size={13} className={isCheckingUpdate ? "progress-spinner" : ""} />
-          <span>{updateStatus?.updateAvailable ? "Güncelleme Var!" : "v2.0.0 Güncelleme"}</span>
+          <span>{updateStatus?.updateAvailable ? "Güncelleme Var!" : <><span>{appVersion}</span> <span>Güncelleme</span></>}</span>
         </button>
 
         {serverRunning && (

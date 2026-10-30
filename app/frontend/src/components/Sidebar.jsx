@@ -14,6 +14,7 @@ import {
   Zap,
   Radio,
 } from "lucide-react";
+import { useAppVersion } from "../useAppVersion";
 
 function formatSidebarDate(value) {
   const date = new Date(value);
@@ -47,6 +48,7 @@ function Sidebar({
   setShowTtsHistory,
   onDeleteTtsOutput
 }) {
+  const appVersion = useAppVersion();
   return (
     <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
       <div>
@@ -396,7 +398,7 @@ function Sidebar({
         >
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#10b981", boxShadow: "0 0 6px #10b981" }} />
-            <span>Sürüm: v2.0.0</span>
+            <span><span>Sürüm:</span> <span>{appVersion}</span></span>
           </div>
           <span style={{ color: "var(--md-sys-color-primary)", fontWeight: 700 }}>DD:YZ Glass</span>
         </div>

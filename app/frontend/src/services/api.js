@@ -1550,6 +1550,22 @@ export async function applyAppUpdate({ force = false } = {}) {
   }
 }
 
+// Installed version from version.json; fetched once and shared by every component that shows it.
+let appVersionPromise = null;
+export function getAppVersion() {
+  if (!appVersionPromise) {
+    appVersionPromise = fetch("/api/updater/local")
+      .then((res) => readJsonResponse(res, "Sürüm bilgisi okunamadı."))
+      .then((data) => (data?.version ? String(data.version) : null))
+      .catch((e) => {
+        console.error("Failed to read app version:", e);
+        appVersionPromise = null;
+        return null;
+      });
+  }
+  return appVersionPromise;
+}
+
 export async function checkAppUpdate() {
   try {
     const res = await fetch("/api/updater/check");

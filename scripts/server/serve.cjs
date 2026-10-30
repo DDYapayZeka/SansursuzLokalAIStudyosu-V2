@@ -9804,6 +9804,12 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
     return 0;
   }
 
+  // GET /api/updater/local - installed version from version.json, without contacting GitHub
+  if (req.url === "/api/updater/local" && req.method === "GET") {
+    const { version, buildNumber } = readLocalVersionMeta();
+    return json(res, 200, { ok: true, version, buildNumber });
+  }
+
   // GET /api/updater/check
   if (req.url.startsWith("/api/updater/check") && req.method === "GET") {
     const localMeta = readLocalVersionMeta();

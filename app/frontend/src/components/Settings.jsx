@@ -25,6 +25,7 @@ import {
   applyAppUpdate,
 } from "../services/api";
 import { THEMES } from "../themes";
+import { useAppVersion } from "../useAppVersion";
 
 const ASPECT_RATIOS = [
   { id: "1:1", label: "1:1 Square", width: 512, height: 512, sdxl_width: 1024, sdxl_height: 1024, desc: "Social posts & avatars" },
@@ -265,6 +266,7 @@ function Settings({
   });
 
   const [updateInfo, setUpdateInfo] = useState(null);
+  const appVersion = useAppVersion();
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateCheckedAt, setUpdateCheckedAt] = useState(null);
   const [isApplyingUpdate, setIsApplyingUpdate] = useState(false);
@@ -322,7 +324,7 @@ function Settings({
         } else {
           showAlert?.({
             title: uiText("Sisteminiz Güncel", "Your System Is Up to Date"),
-            message: uiText(`Harika! En son kararlı sürümü (${data.currentVersion || "v2.0.0"}) kullanıyorsunuz.`, `Great! You are using the latest stable version (${data.currentVersion || "v2.0.0"}).`),
+            message: uiText(`Harika! En son kararlı sürümü (${data.currentVersion || appVersion}) kullanıyorsunuz.`, `Great! You are using the latest stable version (${data.currentVersion || appVersion}).`),
           });
         }
       } else {
@@ -1886,7 +1888,7 @@ function Settings({
       subtitle="Mevcut stüdyo sürümünüzü denetleyin ve en son GitHub güncellemelerini kontrol edin."
       defaultExpanded={true}
       id="app_updates"
-      badge={updateInfo?.updateAvailable ? "Yeni Sürüm!" : "v2.0.0"}
+      badge={updateInfo?.updateAvailable ? "Yeni Sürüm!" : appVersion}
       badgeColor={updateInfo?.updateAvailable ? "#ef4444" : "#10b981"}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
@@ -1900,7 +1902,7 @@ function Settings({
           }}>
             <div style={{ fontSize: "0.75rem", opacity: 0.7, fontWeight: 600 }}>KURULU SÜRÜM</div>
             <div style={{ fontSize: "1.2rem", fontWeight: 800, marginTop: "4px", color: "var(--md-sys-color-primary)" }}>
-              v2.0.0
+              {appVersion}
             </div>
             <div style={{ fontSize: "0.75rem", opacity: 0.8, marginTop: "2px" }}>
               Derine Dalıyoruz: Yapay Zeka Özel Sürümü
@@ -1955,7 +1957,7 @@ function Settings({
               <div style={{ fontWeight: 700, fontSize: "0.95rem", color: updateInfo.updateAvailable ? "#ef4444" : "#10b981" }}>
                 {updateInfo.updateAvailable
                   ? `Yeni Bir Güncelleme Mevcut (${updateInfo.latestVersion})`
-                  : `Tebrikler! En güncel sürümü (${updateInfo.currentVersion || "v2.0.0"}) kullanıyorsunuz.`}
+                  : `Tebrikler! En güncel sürümü (${updateInfo.currentVersion || appVersion}) kullanıyorsunuz.`}
               </div>
               <div style={{ fontSize: "0.8rem", opacity: 0.85, marginTop: "4px" }}>
                 {updateInfo.updateAvailable

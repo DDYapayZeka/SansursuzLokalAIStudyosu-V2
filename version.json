@@ -1,9 +1,9 @@
 {
   "version": "2.0.1",
-  "buildNumber": 206,
+  "buildNumber": 207,
   "channel": "stable",
   "releasedAt": "2026-10-30",
   "repo": "DDYapayZeka/SansursuzLokalAIStudyosu-V2",
   "branch": "main",
-  "notes": "v2.0.1 Hata Düzeltmesi: Model yüklenirken alınan \"llama hatası\" giderildi. windows.bat artık Microsoft Visual C++ çalışma zamanını her açılışta kontrol ediyor, eksik veya eskiyse otomatik indirip kuruyor. Motor açılamadığında hata mesajı doğrudan çözümü ve indirme bağlantısını gösteriyor."
+  "notes": "v2.0.1 Hata Düzeltmesi: Model yüklenirken alınan \"llama hatası\" giderildi. windows.bat artık Microsoft Visual C++ çalışma zamanını her açılışta kontrol ediyor, eksik veya eskiyse otomatik indirip kuruyor. Motor açılamadığında hata mesajı doğrudan çözümü ve indirme bağlantısını gösteriyor. Ayarlar, kenar çubuğu ve üst çubuk artık kurulu sürümü doğru gösteriyor."
 }
