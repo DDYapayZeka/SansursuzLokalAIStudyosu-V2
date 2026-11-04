@@ -30,8 +30,21 @@ function Format-Speed {
     return "{0:N0} KB/s" -f ($bps / 1KB)
 }
 
+# SHA256 of the llama.cpp release archives (GitHub release digests). Another -Release must be added here first.
+$script:KnownSha256 = @{
+    "b9668/llama-b9668-bin-win-cpu-x64.zip"        = "47e365fcaa33c875330479411d372f87ce992df791562aecb4f9c1bae869d943"
+    "b9668/llama-b9668-bin-win-vulkan-x64.zip"     = "76bc136cffe2d340726d629d7f00563c30c6fd27990fab215e563c0bd30baddd"
+    "b9668/llama-b9668-bin-win-cuda-12.4-x64.zip"  = "086d29fe3f73c11c45cfebac8fb4df80bcfbda87c8a242ffcb8e7cf231f358c9"
+    "b9668/llama-b9668-bin-win-sycl-x64.zip"       = "af25307c5ed82aed100045134616b7450fee242542672d00f538581d6582f20e"
+    "b9668/llama-b9668-bin-win-hip-radeon-x64.zip" = "b713f9838e0bf471e2aa627a83cf28e9aaca1021a1e0ada738fad09cf664f000"
+    "b9668/cudart-llama-bin-win-cuda-12.4-x64.zip" = "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6"
+}
+
 function Download-File {
     param([string]$Url, [string]$DestPath, [string]$Label)
+
+    $expectedSha256 = $script:KnownSha256[(($Url -split "/")[-2..-1] -join "/")]
+    if (-not $expectedSha256) { throw "No pinned SHA256 for this download; refusing it: $Url" }
     
     $barWidth  = 48
 
@@ -93,6 +106,13 @@ function Download-File {
 
             Write-Host "`r      [$("#" * $barWidth)] 100%  $(Format-Bytes $done)  Done!                         " -ForegroundColor Green
             Write-Host ""
+            $out.Close()
+            $out = $null
+            $actualSha256 = (Get-FileHash -LiteralPath $DestPath -Algorithm SHA256).Hash.ToLower()
+            if ($actualSha256 -ne $expectedSha256) {
+                Remove-Item $DestPath -Force -ErrorAction SilentlyContinue
+                throw "SHA256 mismatch for $Label (got $actualSha256)"
+            }
             return
         } catch {
             Write-Host ""

@@ -289,7 +289,7 @@ Projemiz **%100 bağımsız (self-contained)** mimaridedir; işletim sisteminize
   Stable Audio 3 modelleri Hugging Face'te lisans onayı ister. Model sayfasında (örn. `huggingface.co/stabilityai/stable-audio-3-small-music`) giriş yapıp lisansı kabul edin, ardından Model Merkezi > **HF Token Ekle** ile "Read" yetkili token'ınızı kaydedip indirmeyi yeniden başlatın. Small Music, Small SFX ve Medium için onay ayrı ayrı verilir.
 
 * **Başka Bir Cihazdan (Ağ Üzerinden) Erişim:**  
-  Güvenlik için sunucu yalnızca `127.0.0.1` üzerinde dinler ve yabancı `Host` başlıklarını reddeder. Yerel ağdan erişmek için `LISTEN_HOST=0.0.0.0` ve `ALLOWED_HOSTS=192.168.1.20` (bilgisayarınızın IP'si) ortam değişkenleriyle başlatın.
+  Güvenlik için sunucu yalnızca `127.0.0.1` üzerinde dinler ve yabancı `Host` başlıklarını ve başka sitelerden gelen tarayıcı isteklerini reddeder. Yerel ağdan erişmek için `LISTEN_HOST=0.0.0.0` ve `ALLOWED_HOSTS=192.168.1.20` (bilgisayarınızın IP'si) ortam değişkenleriyle başlatın.
 
 * **Model Yüklenirken "llama" Hatası / Windows `0xC0000135` (Eksik DLL) Hatası:**  
   En sık sebep, sistemde **Microsoft Visual C++ 2015-2022 x64** çalışma zamanının eksik veya eski olmasıdır. `windows.bat` her açılışta bunu kontrol eder ve eksikse Microsoft'tan indirip kurar (Windows yönetici izni isterse "Evet" deyin). İzin verilmediyse veya kurulum başarısız olduysa paketi [vc_redist.x64.exe](https://aka.ms/vs/17/release/vc_redist.x64.exe) bağlantısından elle kurun, açık PowerShell / komut penceresini kapatıp `windows.bat` dosyasını yeniden başlatın. Sorun sürüyorsa grafik sürücünüzü (NVIDIA Game Ready / AMD Adrenalin / Intel) güncelleyin; eksik olan Vulkan/CUDA çalışma zamanı olabilir.

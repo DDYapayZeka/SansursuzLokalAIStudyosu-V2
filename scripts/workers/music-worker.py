@@ -6,6 +6,22 @@ import copy
 import re
 import random
 import traceback
+import hashlib
+
+MUSICGEN_CHECKPOINT_SHA256 = {
+    "musicgen-medium": "fbc9f401db2aba7518adf208ce5a56aca4ece335242e8274ce1ebd3dfbc86cf5",
+    "musicgen-large": "1f0cf17b5e65c5dd8ba71767371c377f174e4ce1db44bc4d6657825769f26ffd",
+}
+
+
+def verify_checkpoint_sha256(path, expected):
+    # These checkpoints are pickles, which can run code when loaded, so only the published files are opened.
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != expected:
+        raise RuntimeError(f"{os.path.basename(path)} failed its SHA256 check. Delete the file and download it again from the Model Manager.")
 
 
 TR_SFX_DICT = [
@@ -198,6 +214,7 @@ def load_musicgen_model(model_id: str, root_dir: str, device: str, dtype):
         small_sd = load_file(os.path.join(small_dir, "model.safetensors"))
         # These AudioCraft checkpoints are zip pickles despite the .safetensors name; newer torch.load
         # routes *paths* ending in .safetensors to the safetensors reader, so pass a file object.
+        verify_checkpoint_sha256(target_ckpt, MUSICGEN_CHECKPOINT_SHA256[resolved_model_id])
         with open(target_ckpt, "rb") as ckpt_file:
             ac_ckpt = torch.load(ckpt_file, map_location="cpu", weights_only=False)
         bs = ac_ckpt["best_state"]

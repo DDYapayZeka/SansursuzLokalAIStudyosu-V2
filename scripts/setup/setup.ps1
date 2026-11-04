@@ -72,8 +72,22 @@ function Enable-Tls12 {
     }
 }
 
+# SHA256 of every executable archive this script installs (GitHub release digests and nodejs.org SHASUMS256.txt).
+$script:KnownSha256 = @{
+    "https://nodejs.org/dist/v22.23.4/node-v22.23.4-win-x64.zip" = "cbc74b5e0982c9dbb41525fd8fb5dcd32fbee237863f7829072f4639a1ce5f20"
+    "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-721-8caa3f9/sd-master-8caa3f9-bin-win-avx2-x64.zip" = "d6feb4535a5a0aa66560cd9e9288fb1b1deacfd774861ca677a127f6a6a10a6e"
+    "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-721-8caa3f9/sd-master-8caa3f9-bin-win-cuda12-x64.zip" = "acf90a4ff0632c519c540ed4566c969b01b3c236b2359b4ba32ee086f40d7aa4"
+    "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-669-2d40a8b/sd-master-2d40a8b-bin-win-vulkan-x64.zip" = "6bf25e2da448b22b8088791a31c6a1b28e502f1105bb73a1993c077920541ee9"
+    "https://github.com/ggml-org/llama.cpp/releases/download/b9509/cudart-llama-bin-win-cuda-12.4-x64.zip" = "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6"
+}
+
 function Invoke-RichDownload {
     param([string]$Url, [string]$Dest, [string]$Label)
+    $expectedSha256 = $script:KnownSha256[$Url]
+    if (-not $expectedSha256) {
+        Print-Fail "No pinned SHA256 for this download; refusing it: $Url"
+        return $false
+    }
     Print-Info "Downloading: $Label"
     Write-Host ""
 
@@ -132,6 +146,11 @@ function Invoke-RichDownload {
             if ($total -gt 0 -and $done -ne $total) {
                 throw "Download ended early: $(Format-Bytes $done) of $(Format-Bytes $total) received."
             }
+
+            $out.Close()
+            $out = $null
+            $actualSha256 = (Get-FileHash -LiteralPath $Dest -Algorithm SHA256).Hash.ToLower()
+            if ($actualSha256 -ne $expectedSha256) { throw "SHA256 mismatch for $Label (got $actualSha256)" }
 
             Write-Host "`r  [$("#" * $barWidth)] 100%  $(Format-Bytes $done)  Done!                         " -ForegroundColor Green
             Write-Host ""

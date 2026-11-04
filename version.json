@@ -1,9 +1,9 @@
 {
-  "version": "2.0.1",
-  "buildNumber": 207,
+  "version": "2.0.2",
+  "buildNumber": 208,
   "channel": "stable",
-  "releasedAt": "2026-10-30",
+  "releasedAt": "2026-11-04",
   "repo": "DDYapayZeka/SansursuzLokalAIStudyosu-V2",
   "branch": "main",
-  "notes": "v2.0.1 Hata Düzeltmesi: Model yüklenirken alınan \"llama hatası\" giderildi. windows.bat artık Microsoft Visual C++ çalışma zamanını her açılışta kontrol ediyor, eksik veya eskiyse otomatik indirip kuruyor. Motor açılamadığında hata mesajı doğrudan çözümü ve indirme bağlantısını gösteriyor. Ayarlar, kenar çubuğu ve üst çubuk artık kurulu sürümü doğru gösteriyor."
+  "notes": "v2.0.2 Guvenlik Guncellemesi: Uygulama acikken ziyaret edilen baska web sitelerinin yerel sunucuya komut gondermesi engellendi, model indirmelerinde dosya adi ve adres denetimi eklendi, Hugging Face anahtari yalnizca Hugging Face adreslerine gonderiliyor, motor ve pickle model dosyalari SHA256 ile dogrulaniyor. Guncellemeniz onerilir."
 }

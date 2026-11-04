@@ -72,6 +72,12 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $tls12
     Invoke-WebRequest -Uri $RedistUrl -OutFile $installer -UseBasicParsing
 
+    # This installer runs as administrator, so it must carry a valid Microsoft signature first.
+    $signature = Get-AuthenticodeSignature -FilePath $installer
+    if ($signature.Status -ne "Valid" -or $signature.SignerCertificate.Subject -notmatch "O=Microsoft Corporation") {
+        throw "VC_redist.x64.exe imzasi dogrulanamadi ($($signature.Status))"
+    }
+
     $proc = Start-Process -FilePath $installer -ArgumentList "/install", "/quiet", "/norestart" -Verb RunAs -Wait -PassThru
     # 0 = installed, 3010 = installed but a restart is pending, 1638 = a newer version is already present.
     if (@(0, 3010, 1638) -notcontains $proc.ExitCode) {

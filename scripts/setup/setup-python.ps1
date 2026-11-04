@@ -73,6 +73,11 @@ try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072
         $zip = Join-Path $toolsDir "uv.zip"
         Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/astral-sh/uv/releases/download/$UvVersion/uv-x86_64-pc-windows-msvc.zip" -OutFile $zip
+        $uvSha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLower()
+        if ($uvSha256 -ne "7c38608c8a18ee137d748a1773053b07ec8f3a30fab49aebaa6f4e4efeceb019") {
+            Remove-Item $zip -Force
+            throw "uv $UvVersion failed its SHA256 check (got $uvSha256)."
+        }
         Expand-Archive -Path $zip -DestinationPath $uvDir -Force
         Remove-Item $zip -Force
         $found = Get-ChildItem $uvDir -Recurse -Filter uv.exe | Select-Object -First 1

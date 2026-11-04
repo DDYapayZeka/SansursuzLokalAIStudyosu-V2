@@ -19,8 +19,16 @@ function Enable-Tls12 {
     }
 }
 
+# SHA256 of the whisper.cpp release archives (GitHub release digests). Another -Release must be added here first.
+$script:KnownSha256 = @{
+    "v1.9.1/whisper-bin-x64.zip"                = "7d8be46ecd31828e1eb7a2ecdd0d6b314feafd82163038ab6092594b0a063539"
+    "v1.9.1/whisper-cublas-12.4.0-bin-x64.zip"  = "106a2030eff8998e4ef320fe72e263a78449e9040386ee27c41ea80b001b601b"
+}
+
 function Download-File {
     param([string]$Url, [string]$DestPath, [string]$Label)
+    $expectedSha256 = $script:KnownSha256[(($Url -split "/")[-2..-1] -join "/")]
+    if (-not $expectedSha256) { throw "No pinned SHA256 for this download; refusing it: $Url" }
     Write-Host "   >>  Downloading $Label..."
     Enable-Tls12
     $client = New-Object System.Net.WebClient
@@ -29,6 +37,11 @@ function Download-File {
         $client.DownloadFile($Url, $DestPath)
     } finally {
         $client.Dispose()
+    }
+    $actualSha256 = (Get-FileHash -LiteralPath $DestPath -Algorithm SHA256).Hash.ToLower()
+    if ($actualSha256 -ne $expectedSha256) {
+        Remove-Item $DestPath -Force -ErrorAction SilentlyContinue
+        throw "SHA256 mismatch for $Label (got $actualSha256)"
     }
 }
 

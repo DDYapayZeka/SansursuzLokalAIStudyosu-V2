@@ -15,7 +15,8 @@ const fs       = require("fs");
 const net      = require("net");
 const os       = require("os");
 const path     = require("path");
-const { spawn, spawnSync, execSync, exec, execFile } = require("child_process");
+const { spawn, spawnSync, execSync, execFileSync, exec, execFile } = require("child_process");
+const { createHash } = require("crypto");
 const { comprehensiveWebSearch } = require("../search/core");
 
 // HTTP keep-alive agent for llama-server (eliminates TCP handshake per request)
@@ -6205,9 +6206,38 @@ function processNextInQueue() {
   }
 }
 
+// File name and address checks shared by every model download route.
+const BLOCKED_DOWNLOAD_EXT = /\.(exe|dll|msi|scr|com|bat|cmd|ps1|psm1|vbs|js|mjs|cjs|jar|py|pyw|sh|lnk|hta|reg)$/i;
+
+function safeDownloadFilename(value) {
+  const name = path.basename(String(value || "").replace(/\\/g, "/")).trim();
+  if (!name || name === "." || name === ".." || /[<>:"|?*\x00-\x1f]/.test(name)) return "";
+  return name;
+}
+
+function downloadRequestError(url, filename) {
+  let parsed;
+  try {
+    parsed = new URL(String(url));
+  } catch (_) {
+    return "Geçersiz indirme adresi.";
+  }
+  if (parsed.protocol !== "https:") return "Modeller yalnızca https:// adreslerinden indirilebilir.";
+  const name = safeDownloadFilename(filename || parsed.pathname);
+  if (!name) return "Geçersiz dosya adı.";
+  if (BLOCKED_DOWNLOAD_EXT.test(name)) return "Bu dosya türü model olarak indirilemez.";
+  return "";
+}
+
+// The Hugging Face token may only go to Hugging Face itself; a partial match would also accept huggingface.co.evil.example.
+function isHuggingFaceHost(host) {
+  const value = String(host || "").toLowerCase();
+  return value === "huggingface.co" || value.endsWith(".huggingface.co") || value === "hf.co" || value.endsWith(".hf.co");
+}
+
 function enqueueModelDownload(options) {
   const { url, filename, targetDir = MODELS, kind = "image", name, type = "model", backendId, modelId, snapshotId } = options;
-  const targetFilename = filename || (url ? path.basename(new URL(url).pathname) : "");
+  const targetFilename = safeDownloadFilename(filename || (url ? new URL(url).pathname : ""));
 
   // Check if this exact file is currently downloading
   if (downloadState.active && (downloadState.filename === targetFilename || (targetFilename && downloadState.filename && downloadState.filename.includes(targetFilename)))) {
@@ -6348,6 +6378,7 @@ const IMAGE_BACKEND_DOWNLOADS = {
     id: "cpu",
     label: "CPU",
     url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-721-8caa3f9/sd-master-8caa3f9-bin-win-avx2-x64.zip",
+    sha256: "d6feb4535a5a0aa66560cd9e9288fb1b1deacfd774861ca677a127f6a6a10a6e",
     destDir: path.join(ROOT, "app", "backend", "win", "cpu"),
     exeName: "sd-cpu.exe",
     requiredDll: "stable-diffusion.dll",
@@ -6356,6 +6387,7 @@ const IMAGE_BACKEND_DOWNLOADS = {
     id: "vulkan",
     label: "Vulkan GPU",
     url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-669-2d40a8b/sd-master-2d40a8b-bin-win-vulkan-x64.zip",
+    sha256: "6bf25e2da448b22b8088791a31c6a1b28e502f1105bb73a1993c077920541ee9",
     destDir: path.join(ROOT, "app", "backend", "win", "vulkan"),
     exeName: "sd-vulkan.exe",
     requiredDll: "stable-diffusion.dll",
@@ -6364,6 +6396,7 @@ const IMAGE_BACKEND_DOWNLOADS = {
     id: "cuda",
     label: "CUDA GPU",
     url: "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-721-8caa3f9/sd-master-8caa3f9-bin-win-cuda12-x64.zip",
+    sha256: "acf90a4ff0632c519c540ed4566c969b01b3c236b2359b4ba32ee086f40d7aa4",
     destDir: path.join(ROOT, "app", "backend", "win", "cuda"),
     exeName: "sd-cuda.exe",
     requiredDll: "stable-diffusion.dll",
@@ -6419,6 +6452,19 @@ function installImageBackendArchive(zipPath, backend) {
   } finally {
     try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (_) {}
   }
+}
+
+function fileSha256(filePath) {
+  const hash = createHash("sha256");
+  const fd = fs.openSync(filePath, "r");
+  try {
+    const buffer = Buffer.allocUnsafe(1024 * 1024);
+    let read;
+    while ((read = fs.readSync(fd, buffer, 0, buffer.length, null)) > 0) hash.update(buffer.subarray(0, read));
+  } finally {
+    fs.closeSync(fd);
+  }
+  return hash.digest("hex");
 }
 
 function startImageBackendDownload(backendId, redirectCount = 0, redirectUrl = "") {
@@ -6534,6 +6580,10 @@ function startImageBackendDownload(backendId, redirectCount = 0, redirectUrl = "
       }
       fileStream.end(() => {
         try {
+          if (fileSha256(tempPath) !== backend.sha256) {
+            failDownload(`${backend.label} backend failed its SHA256 check; the file was discarded.`);
+            return;
+          }
           try { fs.unlinkSync(destPath); } catch (_) {}
           fs.renameSync(tempPath, destPath);
           downloadState.speed = "Installing";
@@ -6587,7 +6637,7 @@ function describeDownloadHttpError(statusCode, url, headers = {}) {
   const host = (() => {
     try { return new URL(url).hostname; } catch (_) { return ""; }
   })();
-  const isHuggingFace = host.includes("huggingface.co") || host.includes("hf.co");
+  const isHuggingFace = isHuggingFaceHost(host);
   const hfErrorCode = headers["x-error-code"];
   const hfErrorMessage = headers["x-error-message"];
 
@@ -6658,7 +6708,18 @@ function startModelDownload(url, overrideFilename = null, targetDir = MODELS, ki
     }
   }
 
+  // Last line of defence for every caller and for redirects: https only, and the file stays in its folder.
+  filename = safeDownloadFilename(filename);
   const destPath = path.join(targetDir, filename);
+  if (!/^https:\/\//i.test(String(url || "")) || !filename || !pathInside(destPath, targetDir)) {
+    const message = "İndirme reddedildi: adres https değil ya da dosya adı geçersiz.";
+    downloadState = { ...downloadState, active: false, error: message };
+    activeDownload = null;
+    console.error("  [download] " + message);
+    scheduleNextQueuedDownload(2000);
+    return;
+  }
+
   const tempPath = `${destPath}.part`;
   try { fs.unlinkSync(tempPath); } catch (_) {}
   downloadState = {
@@ -6724,7 +6785,7 @@ function startModelDownload(url, overrideFilename = null, targetDir = MODELS, ki
     const host = (() => {
       try { return new URL(url).hostname.toLowerCase(); } catch (_) { return ""; }
     })();
-    const isHfHost = host.includes("huggingface.co") || host.includes("hf.co");
+    const isHfHost = isHuggingFaceHost(host);
     const hfToken = getHuggingFaceToken();
 
     const reqHeaders = {
@@ -6835,9 +6896,9 @@ function startModelDownload(url, overrideFilename = null, targetDir = MODELS, ki
             try {
               const destDir = path.dirname(destPath);
               if (osPlatform === "win32") {
-                execSync(`tar -xf "${destPath}" -C "${destDir}"`, { stdio: "ignore" });
+                execFileSync("tar", ["-xf", destPath, "-C", destDir], { stdio: "ignore" });
               } else {
-                execSync(`unzip -o "${destPath}" -d "${destDir}"`, { stdio: "ignore" });
+                execFileSync("unzip", ["-o", destPath, "-d", destDir], { stdio: "ignore" });
               }
               try { fs.unlinkSync(destPath); } catch (_) {}
               console.log(`  [download] ZIP arsivi acildi: ${path.basename(destPath)}`);
@@ -8000,7 +8061,31 @@ function isAllowedHostHeader(hostHeader) {
   if (!host) return true;
   if (host === "localhost" || host === "127.0.0.1" || host === "::1") return true;
   if (EXTRA_ALLOWED_HOSTS.includes(host)) return true;
-  return LISTEN_HOST !== "127.0.0.1" && LISTEN_HOST !== "localhost" && EXTRA_ALLOWED_HOSTS.length === 0;
+  // LAN mode without ALLOWED_HOSTS: only plain IP addresses, so a DNS-rebinding domain cannot pass.
+  return LISTEN_HOST !== "127.0.0.1" && LISTEN_HOST !== "localhost" && EXTRA_ALLOWED_HOSTS.length === 0 && net.isIP(host) !== 0;
+}
+
+// The management API has no login of its own, so browsers may only reach it from the studio's own page.
+// Otherwise any web page open while the studio runs could send it commands: the browser hides the reply, not the request.
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+const DEV_UI_PORT = String(readPort(process.env.DEV_UI_PORT, 5173));
+
+function isAllowedBrowserRequest(req) {
+  const isApi = /^\/(api|v1|sdapi)\//.test(String(req.url || "").split("?")[0]);
+  const site = String(req.headers["sec-fetch-site"] || "").toLowerCase();
+  const mode = String(req.headers["sec-fetch-mode"] || "").toLowerCase();
+  if ((site === "cross-site" || site === "same-site") && (isApi || mode !== "navigate")) return false;
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  try {
+    const parsed = new URL(origin);
+    if (parsed.host.toLowerCase() === String(req.headers.host || "").toLowerCase()) return true;
+    const hostname = parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    const port = parsed.port || (parsed.protocol === "https:" ? "443" : "80");
+    return LOOPBACK_HOSTS.has(hostname) && (port === String(PORT_FRONTEND) || port === DEV_UI_PORT);
+  } catch (_) {
+    return false;
+  }
 }
 
 function maskSecret(value) {
@@ -8071,9 +8156,19 @@ function saveProvidersConfig(cfg) {
 
 // -- HTTP Server ---------------------------------------------------------------
 const server = http.createServer(async (req, res) => {
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+
   if (!isAllowedHostHeader(req.headers.host)) {
     res.writeHead(403, { "Content-Type": "text/plain" });
     res.end("Forbidden host");
+    return;
+  }
+
+  if (!isAllowedBrowserRequest(req)) {
+    res.writeHead(403, { "Content-Type": "text/plain" });
+    res.end("Forbidden origin");
     return;
   }
 
@@ -10371,6 +10466,8 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
     if (!url || !filename || !filename.toLowerCase().endsWith(".bin")) {
       return json(res, 400, { ok: false, error: "Bir konusma modeli .bin URL'i veya katalog model kimligi gereklidir." });
     }
+    const requestError = downloadRequestError(url, filename);
+    if (requestError) return json(res, 400, { ok: false, error: requestError });
     const result = enqueueModelDownload({
       url,
       filename,
@@ -11362,6 +11459,8 @@ async function getLlmfitRecommendations(useCase = "chat", limit = 10) {
       return json(res, 200, enqueueModelDownload({ type: "snapshot", snapshotId, name: name || SNAPSHOT_MODELS[snapshotId].label, kind: kind || "model" }));
     }
     if (!url) return json(res, 400, { ok: false, error: "URL is required" });
+    const requestError = downloadRequestError(url, filename) || (indexUrl ? downloadRequestError(indexUrl, indexFilename) : "");
+    if (requestError) return json(res, 400, { ok: false, error: requestError });
     if (/huggingface\.co\//i.test(url) && !/\/(resolve|blob)\//i.test(url)) {
       return json(res, 400, { ok: false, error: "Bu bağlantı bir Hugging Face depo sayfası, dosya değil. Doğrudan dosya bağlantısı (…/resolve/main/dosya.safetensors) kullanın." });
     }
@@ -11422,9 +11521,13 @@ async function getLlmfitRecommendations(useCase = "chat", limit = 10) {
       if (!filename.toLowerCase().endsWith(".gguf")) {
         return json(res, 400, { ok: false, error: "Text model URL must point to a .gguf file." });
       }
+      const urlError = downloadRequestError(directUrl, filename);
+      if (urlError) return json(res, 400, { ok: false, error: urlError });
       const projector = body.projectorUrl && body.projectorFilename
         ? { url: String(body.projectorUrl), filename: path.basename(String(body.projectorFilename)) }
         : await resolveHuggingFaceProjector(directUrl, filename);
+      const projectorError = projector?.url ? downloadRequestError(projector.url, projector.filename) : "";
+      if (projectorError) return json(res, 400, { ok: false, error: projectorError });
 
       const result = enqueueModelDownload({
         url: directUrl,

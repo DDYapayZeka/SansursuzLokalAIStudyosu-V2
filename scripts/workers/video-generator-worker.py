@@ -17,6 +17,19 @@ import time
 import base64
 import subprocess
 import traceback
+import hashlib
+
+ANIMATEDIFF_ADAPTER_SHA256 = "69ed0f5fef82b110aca51bcab73b21104242bc65d6ab4b8b2a2a94d31cad1bf0"
+
+
+def verify_checkpoint_sha256(path, expected):
+    # These checkpoints are pickles, which can run code when loaded, so only the published files are opened.
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != expected:
+        raise RuntimeError(f"{os.path.basename(path)} failed its SHA256 check. Delete the file and download it again from the Model Manager.")
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 VIDEO_MODELS = os.path.join(ROOT, "app", "video-models")
@@ -128,6 +141,7 @@ def run_animatediff(payload, out_path, rng_seed):
 
     progress("loading", 0, 0)
     t0 = time.time()
+    verify_checkpoint_sha256(adapter_path, ANIMATEDIFF_ADAPTER_SHA256)
     adapter = MotionAdapter.from_single_file(adapter_path, torch_dtype=torch.float16)
     pipe = AnimateDiffPipeline.from_single_file(base_ckpt, motion_adapter=adapter, torch_dtype=torch.float16)
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, beta_schedule="linear")
