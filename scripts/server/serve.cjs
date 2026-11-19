@@ -2548,8 +2548,10 @@ function getCloudLlmModels() {
     }
 
     if (keys.gemini && String(keys.gemini).trim()) {
-      addCloudModel("gemini", "gemini-2.5-flash", "Google Gemini 2.5 Flash [Gemini API - Hazır]");
-      addCloudModel("gemini", "gemini-2.5-pro", "Google Gemini 2.5 Pro [Gemini API - Hazır]");
+      addCloudModel("gemini", "gemini-3.8-flash", "Google Gemini 3.8 Flash [Gemini API - Hazır]");
+      addCloudModel("gemini", "gemini-3.6-flash", "Google Gemini 3.6 Flash [Gemini API - Hazır]");
+      addCloudModel("gemini", "gemini-3.5-flash-lite", "Google Gemini 3.5 Flash-Lite [Gemini API - Hazır]");
+      addCloudModel("gemini", "gemini-3.1-pro-preview", "Google Gemini 3.1 Pro Preview [Gemini API - Hazır]");
       const customGe = Array.isArray(customModels.gemini) ? customModels.gemini : [];
       for (const cm of customGe) {
         if (cm && String(cm).trim()) {
@@ -8100,6 +8102,27 @@ function isMaskedSecret(value) {
 }
 
 const PROVIDERS_CONFIG_PATH = path.join(LLM_CONFIG_DIR, "api-providers.json");
+
+// Gemini 2.5 Flash / Pro are deprecated (shutdown 2026-12-01) and only keys that used them before
+// can still call them; new keys get HTTP 404. Any Gemini model that 404s falls back to these.
+const GEMINI_FALLBACK_CHAT_MODEL = "gemini-3.8-flash";
+const GEMINI_FALLBACK_IMAGE_MODEL = "gemini-3.1-flash-image";
+
+// Pulls the human-readable message out of a cloud provider error body. Google's OpenAI-compatible
+// endpoint wraps errors in an array ([{"error": {...}}]), the others return a plain object.
+function extractCloudErrorMessage(errText, status) {
+  const fallback = `Bulut API hatası (HTTP ${status})`;
+  if (!errText) return fallback;
+  try {
+    let parsed = JSON.parse(errText);
+    if (Array.isArray(parsed)) parsed = parsed[0];
+    const err = parsed?.error;
+    const msg = (typeof err === "string" ? err : err?.message) || parsed?.message;
+    return msg ? `${fallback}: ${msg}` : fallback;
+  } catch (_) {
+    return `${fallback}: ${String(errText).slice(0, 240)}`;
+  }
+}
 const HF_TOKEN_FILE = path.join(LLM_CONFIG_DIR, "hf-token.txt");
 
 function getHuggingFaceToken() {
@@ -9657,7 +9680,7 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
         b64 = oaiData.data?.[0]?.b64_json || "";
       } else if (provider === "gemini") {
         const apiKey = needKey("gemini", "Google Gemini");
-        const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId || "gemini-2.5-flash-image")}:generateContent`, {
+        const callGeminiImage = (modelName) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({
@@ -9665,6 +9688,12 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
             generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
           }),
         });
+        const imageModel = modelId || GEMINI_FALLBACK_IMAGE_MODEL;
+        let gRes = await callGeminiImage(imageModel);
+        if (gRes.status === 404 && imageModel !== GEMINI_FALLBACK_IMAGE_MODEL) {
+          console.log(`  [cloud-image] ${imageModel} returned HTTP 404; falling back to ${GEMINI_FALLBACK_IMAGE_MODEL}`);
+          gRes = await callGeminiImage(GEMINI_FALLBACK_IMAGE_MODEL);
+        }
         const gData = await gRes.json().catch(() => ({}));
         if (!gRes.ok) throw new Error(`Gemini görsel hatası (${gRes.status}): ${gData.error?.message || "bilinmeyen hata"}`);
         const part = (gData.candidates?.[0]?.content?.parts || []).find((p) => p.inlineData?.data || p.inline_data?.data);
@@ -9823,19 +9852,25 @@ async function renderAIVideo({ prompt, mode = "t2v", engine = "animatediff-v15",
         const data = await response.json();
         return json(res, 200, { ok: true, result: data });
       } else if (provider === "gemini") {
-        const targetModel = model || "gemini-2.5-flash";
         const contents = messages.filter(m => m.role !== "system").map(m => ({
           role: m.role === "assistant" ? "model" : "user",
           parts: [{ text: m.content }]
         }));
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`, {
+        const callGemini = (modelName) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({ contents })
         });
+        let targetModel = model || GEMINI_FALLBACK_CHAT_MODEL;
+        let response = await callGemini(targetModel);
+        if (response.status === 404 && targetModel !== GEMINI_FALLBACK_CHAT_MODEL) {
+          console.log(`  [cloud-chat] ${targetModel} returned HTTP 404; falling back to ${GEMINI_FALLBACK_CHAT_MODEL}`);
+          targetModel = GEMINI_FALLBACK_CHAT_MODEL;
+          response = await callGemini(targetModel);
+        }
         if (!response.ok) {
           const errText = await response.text();
-          throw new Error(`Gemini (${response.status}): ${errText}`);
+          throw new Error(`Gemini ${extractCloudErrorMessage(errText, response.status)}`);
         }
         const data = await response.json();
         const contentText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -10859,15 +10894,16 @@ async function doCloudLlmChat(req, res, body, webAugmentation) {
       upstreamRes = await executeCloudFetch(cloudModelId);
     }
 
+    // Gemini model no longer available to this key (e.g. deprecated 2.5 Flash/Pro on a new key): switch to the current stable model
+    if (!upstreamRes.ok && provider === "gemini" && upstreamRes.status === 404 && cloudModelId !== GEMINI_FALLBACK_CHAT_MODEL) {
+      console.log(`  [llm-cloud] ${cloudModelId} returned HTTP 404; falling back to ${GEMINI_FALLBACK_CHAT_MODEL}`);
+      cloudModelId = GEMINI_FALLBACK_CHAT_MODEL;
+      upstreamRes = await executeCloudFetch(cloudModelId);
+    }
+
     if (!upstreamRes.ok) {
       const errText = await upstreamRes.text();
-      let errMsg = `Bulut API hatası (HTTP ${upstreamRes.status})`;
-      try {
-        const parsedErr = JSON.parse(errText);
-        errMsg = parsedErr?.error?.message || parsedErr?.message || errMsg;
-      } catch (_) {
-        if (errText) errMsg += `: ${errText.slice(0, 240)}`;
-      }
+      const errMsg = extractCloudErrorMessage(errText, upstreamRes.status);
       isLlmGenerating = false;
       return json(res, upstreamRes.status || 500, { ok: false, error: errMsg });
     }

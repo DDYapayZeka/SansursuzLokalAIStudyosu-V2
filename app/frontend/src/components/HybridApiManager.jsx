@@ -83,11 +83,11 @@ const PROVIDERS = [
     category: "chat",
     badge: "Hızlı & Geniş Bağlam",
     badgeColor: "#3b82f6",
-    desc: "Gemini 2.5 Flash / Pro sohbet ve Gemini 2.5 Flash Image (\"Nano Banana\") görsel üretimi için Google AI Studio bağlantısı. (Imagen modelleri Haziran 2026'da kapatıldı.)",
+    desc: "Gemini 3.8 Flash / 3.1 Pro sohbet ve Nano Banana 2 (Gemini 3.1 Flash Image) görsel üretimi için Google AI Studio bağlantısı. (Gemini 2.5 Flash/Pro yeni anahtarlara kapalı; seçilirse otomatik olarak Gemini 3.8 Flash kullanılır.)",
     docsUrl: "https://aistudio.google.com/app/apikey",
     keyPrefix: "AIza",
     placeholder: "AIzaSy...",
-    models: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-image"],
+    models: ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-3.1-flash-image"],
   },
   {
     id: "minimax",

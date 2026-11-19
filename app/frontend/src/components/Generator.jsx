@@ -154,6 +154,14 @@ const IMAGE_CATALOG = [
     isCloud: true,
   },
   {
+    name: "Google Gemini 3.1 Flash Image (Nano Banana 2)",
+    displayName: "[Bulut API] Google Gemini 3.1 Flash Image - Nano Banana 2 (Gemini anahtarı)",
+    filename: "cloud:gemini:gemini-3.1-flash-image",
+    approxSize: "Bulut API",
+    installed: true,
+    isCloud: true,
+  },
+  {
     name: "Google Gemini 2.5 Flash Image (Nano Banana)",
     displayName: "[Bulut API] Google Gemini 2.5 Flash Image - Nano Banana (Gemini anahtarı)",
     filename: "cloud:gemini:gemini-2.5-flash-image",
